@@ -18,10 +18,10 @@ const VisualizationPanel: Component = () => {
   );
 
   return (
-    <div class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-gray-300">可视化</h2>
-        <div class="flex space-x-1.5">
+    <div class="space-y-3 h-full flex flex-col">
+      <div class="flex items-center justify-between flex-shrink-0">
+        <h2 class="text-xs font-semibold text-gray-400">可视化</h2>
+        <div class="flex space-x-1">
           {chartBtn("stress", "应力")}
           {chartBtn("rpm", "转速")}
           {chartBtn("energy", "能量")}
@@ -43,8 +43,8 @@ const VisualizationPanel: Component = () => {
         {(simulation) => (
           <div class="space-y-4">
             {/* Chart area */}
-            <div class="bg-gray-800 rounded p-4 border border-gray-700">
-              <h3 class="text-xs font-medium text-gray-400 mb-2">
+            <div class="bg-gray-800 rounded p-3 border border-gray-700">
+              <h3 class="text-[10px] font-medium text-gray-400 mb-1">
                 {activeChart() === "stress" && "径向应力分布"}
                 {activeChart() === "rpm" && "转速-时间曲线"}
                 {activeChart() === "energy" && "能量特性"}

@@ -13,8 +13,12 @@
     "windows": [
       {
         "title": "FlyForge - 飞轮设计及运动学模拟",
-        "width": 1200,
+        "width": 1280,
         "height": 800,
+        "minWidth": 1024,
+        "minHeight": 650,
+        "maxWidth": 1920,
+        "maxHeight": 1200,
         "resizable": true,
         "fullscreen": false
       }

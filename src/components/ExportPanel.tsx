@@ -40,26 +40,29 @@ const ExportPanel: Component = () => {
     }
   };
 
-  const btn = (fmt: "csv" | "json" | "svg" | "params", label: string, cls: string, needSim = true) => (
-    <button
-      onClick={() => handleExport(fmt)}
-      disabled={needSim && !sim()}
-      class={`flex-1 flex items-center justify-center space-x-1 px-2 py-2 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${cls}`}
-    >
-      <span>{label}</span>
-    </button>
-  );
-
   return (
     <div>
-      <div class="flex space-x-2">
-        {btn("csv", "CSV", "bg-green-700/50 hover:bg-green-700 text-green-300")}
-        {btn("json", "JSON", "bg-blue-700/50 hover:bg-blue-700 text-blue-300")}
-        {btn("svg", "SVG", "bg-purple-700/50 hover:bg-purple-700 text-purple-300")}
-        {btn("params", "参数", "bg-yellow-700/50 hover:bg-yellow-700 text-yellow-300", false)}
+      <p class="text-[10px] text-gray-500 mb-1">导出</p>
+      <div class="grid grid-cols-2 gap-1">
+        <button onClick={() => handleExport("csv")} disabled={!sim()}
+          class="text-[10px] py-1 rounded bg-green-800/40 text-green-400 hover:bg-green-800/60 disabled:opacity-40 transition-colors">
+          CSV
+        </button>
+        <button onClick={() => handleExport("json")} disabled={!sim()}
+          class="text-[10px] py-1 rounded bg-blue-800/40 text-blue-400 hover:bg-blue-800/60 disabled:opacity-40 transition-colors">
+          JSON
+        </button>
+        <button onClick={() => handleExport("svg")} disabled={!sim()}
+          class="text-[10px] py-1 rounded bg-purple-800/40 text-purple-400 hover:bg-purple-800/60 disabled:opacity-40 transition-colors">
+          SVG
+        </button>
+        <button onClick={() => handleExport("params")}
+          class="text-[10px] py-1 rounded bg-yellow-800/40 text-yellow-400 hover:bg-yellow-800/60 transition-colors">
+          参数
+        </button>
       </div>
       <Show when={status()}>
-        <p class="text-xs text-center text-blue-400 mt-1.5">{status()}</p>
+        <p class="text-[9px] text-center text-blue-400 mt-1">{status()}</p>
       </Show>
     </div>
   );
