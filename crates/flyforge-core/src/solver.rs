@@ -7,6 +7,9 @@
 //! Reference: 项目记忆文件 - 四、核心架构设计（关键经验）
 //! Reference: CamForge architecture pattern
 
+use crate::geometry;
+use crate::inertia;
+use crate::stress;
 use crate::types::{
     FlywheelParams, FlywheelSection, FlywheelType, InertiaResult, Material, SolverOutput,
     StressDistribution,
@@ -72,38 +75,30 @@ pub struct SolidDiskSolver;
 impl FlywheelSolver for SolidDiskSolver {
     fn compute_section(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _material: &Material,
     ) -> Result<FlywheelSection, String> {
-        // TODO: Implement in step 5
-        Err("SolidDiskSolver::compute_section not implemented".into())
+        Ok(geometry::section_solid_disk(params))
     }
 
     fn compute_inertia(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _section: &FlywheelSection,
-        _material: &Material,
+        material: &Material,
     ) -> Result<InertiaResult, String> {
-        // TODO: Implement in step 5
         // Reference: J = 0.5 * m * R^2
-        Err("SolidDiskSolver::compute_inertia not implemented".into())
+        Ok(inertia::mass_inertia_solid(params, material))
     }
 
     fn compute_stress(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _section: &FlywheelSection,
-        _material: &Material,
-        _omega: f64,
+        material: &Material,
+        omega: f64,
     ) -> StressDistribution {
-        // TODO: Implement in step 5
-        StressDistribution {
-            r: vec![],
-            sigma_r: vec![],
-            sigma_h: vec![],
-            sigma_vm: vec![],
-        }
+        stress::compute_stress_distribution(params, material, omega)
     }
 
     fn has_bore(&self) -> bool {
@@ -125,36 +120,30 @@ pub struct AnnularRingSolver;
 impl FlywheelSolver for AnnularRingSolver {
     fn compute_section(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _material: &Material,
     ) -> Result<FlywheelSection, String> {
-        Err("AnnularRingSolver::compute_section not implemented".into())
+        Ok(geometry::section_annular_ring(params))
     }
 
     fn compute_inertia(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _section: &FlywheelSection,
-        _material: &Material,
+        material: &Material,
     ) -> Result<InertiaResult, String> {
-        // TODO: Implement in step 5
         // Reference: J = 0.5 * m * (R1^2 + R2^2)
-        Err("AnnularRingSolver::compute_inertia not implemented".into())
+        Ok(inertia::mass_inertia_annular(params, material))
     }
 
     fn compute_stress(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _section: &FlywheelSection,
-        _material: &Material,
-        _omega: f64,
+        material: &Material,
+        omega: f64,
     ) -> StressDistribution {
-        StressDistribution {
-            r: vec![],
-            sigma_r: vec![],
-            sigma_h: vec![],
-            sigma_vm: vec![],
-        }
+        stress::compute_stress_distribution(params, material, omega)
     }
 
     fn has_bore(&self) -> bool {
@@ -176,34 +165,30 @@ pub struct TaperedDiskSolver;
 impl FlywheelSolver for TaperedDiskSolver {
     fn compute_section(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _material: &Material,
     ) -> Result<FlywheelSection, String> {
-        Err("TaperedDiskSolver::compute_section not implemented".into())
+        Ok(geometry::section_tapered_disk(params))
     }
 
     fn compute_inertia(
         &self,
         _params: &FlywheelParams,
-        _section: &FlywheelSection,
-        _material: &Material,
+        section: &FlywheelSection,
+        material: &Material,
     ) -> Result<InertiaResult, String> {
-        Err("TaperedDiskSolver::compute_inertia not implemented".into())
+        // Variable thickness -> numerical integration
+        Ok(inertia::mass_inertia_numerical(section, material))
     }
 
     fn compute_stress(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _section: &FlywheelSection,
-        _material: &Material,
-        _omega: f64,
+        material: &Material,
+        omega: f64,
     ) -> StressDistribution {
-        StressDistribution {
-            r: vec![],
-            sigma_r: vec![],
-            sigma_h: vec![],
-            sigma_vm: vec![],
-        }
+        stress::compute_stress_distribution(params, material, omega)
     }
 
     fn has_bore(&self) -> bool {
@@ -225,34 +210,30 @@ pub struct ConstantStrengthSolver;
 impl FlywheelSolver for ConstantStrengthSolver {
     fn compute_section(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _material: &Material,
     ) -> Result<FlywheelSection, String> {
-        Err("ConstantStrengthSolver::compute_section not implemented".into())
+        Ok(geometry::section_constant_strength(params))
     }
 
     fn compute_inertia(
         &self,
         _params: &FlywheelParams,
-        _section: &FlywheelSection,
-        _material: &Material,
+        section: &FlywheelSection,
+        material: &Material,
     ) -> Result<InertiaResult, String> {
-        Err("ConstantStrengthSolver::compute_inertia not implemented".into())
+        // Hyperbolic profile -> numerical integration
+        Ok(inertia::mass_inertia_numerical(section, material))
     }
 
     fn compute_stress(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _section: &FlywheelSection,
-        _material: &Material,
-        _omega: f64,
+        material: &Material,
+        omega: f64,
     ) -> StressDistribution {
-        StressDistribution {
-            r: vec![],
-            sigma_r: vec![],
-            sigma_h: vec![],
-            sigma_vm: vec![],
-        }
+        stress::compute_stress_distribution(params, material, omega)
     }
 
     fn has_bore(&self) -> bool {
@@ -274,36 +255,30 @@ pub struct MultiLayerCompositeSolver;
 impl FlywheelSolver for MultiLayerCompositeSolver {
     fn compute_section(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _material: &Material,
     ) -> Result<FlywheelSection, String> {
-        Err("MultiLayerCompositeSolver::compute_section not implemented".into())
+        Ok(geometry::section_multi_layer(params))
     }
 
     fn compute_inertia(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _section: &FlywheelSection,
-        _material: &Material,
+        material: &Material,
     ) -> Result<InertiaResult, String> {
-        // TODO: Implement in step 5
         // Reference: J_total = J_rim + J_web + J_hub
-        Err("MultiLayerCompositeSolver::compute_inertia not implemented".into())
+        Ok(inertia::mass_inertia_multi_layer(params, material))
     }
 
     fn compute_stress(
         &self,
-        _params: &FlywheelParams,
+        params: &FlywheelParams,
         _section: &FlywheelSection,
-        _material: &Material,
-        _omega: f64,
+        material: &Material,
+        omega: f64,
     ) -> StressDistribution {
-        StressDistribution {
-            r: vec![],
-            sigma_r: vec![],
-            sigma_h: vec![],
-            sigma_vm: vec![],
-        }
+        stress::compute_stress_distribution(params, material, omega)
     }
 
     fn has_bore(&self) -> bool {
