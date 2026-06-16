@@ -13,6 +13,7 @@ pub mod inertia;
 pub mod stress;
 pub mod safety;
 pub mod energy;
+pub mod dynamics;
 
 // ============================================================
 // Integration Tests
