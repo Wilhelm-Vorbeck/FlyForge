@@ -1,5 +1,6 @@
 import { Component, Show, For } from "solid-js";
 import { useAppContext } from "../store";
+import { runSimulationWithState } from "../services/api";
 
 interface ResultCardProps {
   title: string;
@@ -50,14 +51,16 @@ const ResultsPanel: Component = () => {
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-lg font-semibold text-white">计算结果</h2>
         <button
-          onClick={async () => {
-            context.setLoading(true);
-            context.setError(null);
-            // Simulate calculation
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            context.setLoading(false);
+          onClick={() => {
+            runSimulationWithState(
+              context.state().params,
+              context.setLoading,
+              context.setError,
+              context.setSimulation
+            );
           }}
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center space-x-2"
+          disabled={context.state().isLoading}
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors flex items-center space-x-2"
         >
           <svg
             class="w-4 h-4"

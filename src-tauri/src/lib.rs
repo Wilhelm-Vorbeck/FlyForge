@@ -1,4 +1,5 @@
-use flyforge_core::types::{FlywheelParams, Material, materials};
+use flyforge_core::solver::SolverRegistry;
+use flyforge_core::types::{FlywheelParams, FlywheelSimulation, Material, materials};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -11,7 +12,7 @@ pub struct AppInfo {
 fn get_app_info() -> AppInfo {
     AppInfo {
         name: "FlyForge".to_string(),
-        version: "0.1.0".to_string(),
+        version: "0.7.0".to_string(),
     }
 }
 
@@ -31,13 +32,22 @@ fn get_flywheel_types() -> Vec<String> {
     ]
 }
 
+#[tauri::command]
+fn run_simulation(params: FlywheelParams) -> Result<FlywheelSimulation, String> {
+    let registry = SolverRegistry::new();
+    let material = materials::find_by_id(&params.material_id)
+        .unwrap_or_else(|| materials::default_material());
+    registry.simulate(&params, &material)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             get_materials,
-            get_flywheel_types
+            get_flywheel_types,
+            run_simulation
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
