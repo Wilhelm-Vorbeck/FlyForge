@@ -11,6 +11,7 @@ pub mod solver;
 pub mod geometry;
 pub mod inertia;
 pub mod stress;
+pub mod safety;
 
 // ============================================================
 // Integration Tests
