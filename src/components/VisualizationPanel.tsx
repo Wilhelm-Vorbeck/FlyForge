@@ -1,4 +1,4 @@
-import { Component, Show, createEffect, createSignal } from "solid-js";
+import { Component, Show, createSignal } from "solid-js";
 import { useAppContext } from "../store";
 
 const VisualizationPanel: Component = () => {
@@ -6,78 +6,52 @@ const VisualizationPanel: Component = () => {
   const sim = () => context.state().simulation;
   const [activeChart, setActiveChart] = createSignal<"stress" | "rpm" | "energy">("stress");
 
+  const chartBtn = (id: "stress" | "rpm" | "energy", label: string) => (
+    <button
+      onClick={() => setActiveChart(id)}
+      class={`px-2.5 py-1 text-xs rounded transition-colors ${
+        activeChart() === id ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <div>
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-lg font-semibold text-white">可视化</h2>
-        <div class="flex space-x-2">
-          <button
-            onClick={() => setActiveChart("stress")}
-            class={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              activeChart() === "stress"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            应力分布
-          </button>
-          <button
-            onClick={() => setActiveChart("rpm")}
-            class={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              activeChart() === "rpm"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            转速曲线
-          </button>
-          <button
-            onClick={() => setActiveChart("energy")}
-            class={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              activeChart() === "energy"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            能量分布
-          </button>
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-300">可视化</h2>
+        <div class="flex space-x-1.5">
+          {chartBtn("stress", "应力")}
+          {chartBtn("rpm", "转速")}
+          {chartBtn("energy", "能量")}
         </div>
       </div>
 
       <Show
         when={sim()}
         fallback={
-          <div class="text-center py-12 text-gray-400">
-            <svg
-              class="w-16 h-16 mx-auto mb-4 opacity-50"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-              />
+          <div class="text-center py-16 text-gray-500">
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
             </svg>
-            <p class="text-lg">运行仿真以查看可视化</p>
-            <p class="text-sm mt-2">图表将显示在此处</p>
+            <p class="text-sm">运行仿真以查看可视化</p>
           </div>
         }
       >
         {(simulation) => (
-          <div>
+          <div class="space-y-4">
             {/* Chart area */}
-            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
-              <h3 class="text-sm font-medium text-gray-300 mb-4">
+            <div class="bg-gray-800 rounded p-4 border border-gray-700">
+              <h3 class="text-xs font-medium text-gray-400 mb-2">
                 {activeChart() === "stress" && "径向应力分布"}
                 {activeChart() === "rpm" && "转速-时间曲线"}
                 {activeChart() === "energy" && "能量特性"}
               </h3>
 
               {/* SVG Chart */}
-              <div class="w-full h-64">
+              <div class="w-full h-48">
                 {activeChart() === "stress" && <StressChart sim={simulation()} />}
                 {activeChart() === "rpm" && <RpmChart sim={simulation()} />}
                 {activeChart() === "energy" && <EnergyChart sim={simulation()} />}
@@ -85,8 +59,8 @@ const VisualizationPanel: Component = () => {
             </div>
 
             {/* Flywheel section visualization */}
-            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <h3 class="text-sm font-medium text-gray-300 mb-4">飞轮截面</h3>
+            <div class="bg-gray-800 rounded p-4 border border-gray-700">
+              <h3 class="text-xs font-medium text-gray-400 mb-2">飞轮截面</h3>
               <div class="flex items-center justify-center">
                 <FlywheelSectionViz params={context.state().params} />
               </div>
