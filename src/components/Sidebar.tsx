@@ -5,8 +5,9 @@ import { runSimulationWithState } from "../services/api";
 import GeometryTab from "./tabs/GeometryTab";
 import MaterialTab from "./tabs/MaterialTab";
 import OperatingTab from "./tabs/OperatingTab";
+import PresetSelector from "./PresetSelector";
 
-type TabId = "geometry" | "material" | "operating";
+type TabId = "geometry" | "material" | "operating" | "presets";
 
 const Sidebar: Component = () => {
   const [activeTab, setActiveTab] = createSignal<TabId>("geometry");
@@ -17,6 +18,7 @@ const Sidebar: Component = () => {
     { id: "geometry" as TabId, label: "几何参数", icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" },
     { id: "material" as TabId, label: "材料选择", icon: "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" },
     { id: "operating" as TabId, label: "工况参数", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+    { id: "presets" as TabId, label: "预设方案", icon: "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" },
   ];
 
   // Auto-run simulation when parameters change (debounced)
@@ -76,6 +78,7 @@ const Sidebar: Component = () => {
         {activeTab() === "geometry" && <GeometryTab />}
         {activeTab() === "material" && <MaterialTab />}
         {activeTab() === "operating" && <OperatingTab />}
+        {activeTab() === "presets" && <PresetSelector />}
       </div>
 
       {/* Flywheel type selector */}
