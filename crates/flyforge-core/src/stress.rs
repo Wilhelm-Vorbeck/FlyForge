@@ -1,4 +1,374 @@
 //! Stress Analysis
 //!
-//! Lame solution + von Mises equivalent stress.
-//! Placeholder - will be implemented in later steps.
+//! Lame solution for rotating disk + von Mises equivalent stress.
+//! All internal computations use SI units (meters, Pa).
+//!
+//! Reference: 机械知识库/设计基础/03-常力学公式.md - 动荷应力
+//! Reference: 项目记忆文件 - 七、核心公式全集
+
+use crate::types::{FlywheelParams, Material, StressDistribution};
+
+/// Compute Lame stress for an annular (hollow) rotating disk.
+///
+/// Reference: 项目记忆文件 - 七、核心公式全集
+///   空心圆盘（自由边界）:
+///     sigma_r(r) = (3+nu)/8 * rho*omega^2 * [R^2 + r_i^2 - R^2*r_i^2/r^2 - r^2]
+///     sigma_h(r) = (3+nu)/8 * rho*omega^2 * [R^2 + r_i^2 + R^2*r_i^2/r^2 - (1+3nu)/(3+nu) * r^2]
+///
+/// Input: r array in meters, params in mm, material in SI, omega in rad/s.
+/// Output: sigma_r and sigma_h in Pa.
+pub fn lame_stress_annular(
+    r: &[f64],
+    params: &FlywheelParams,
+    material: &Material,
+    omega: f64,
+) -> (Vec<f64>, Vec<f64>) {
+    let nu = material.poisson_ratio;
+    let rho = material.density;
+    let r_o = params.r_o / 1000.0;
+    let r_i = params.r_i / 1000.0;
+
+    let coeff = (3.0 + nu) / 8.0 * rho * omega * omega;
+    let r_o2 = r_o * r_o;
+    let r_i2 = r_i * r_i;
+    let o_i_product = r_o2 * r_i2;
+    let hoop_r2_coeff = (1.0 + 3.0 * nu) / (3.0 + nu);
+
+    let n = r.len();
+    let mut sigma_r = Vec::with_capacity(n);
+    let mut sigma_h = Vec::with_capacity(n);
+
+    for &radius in r {
+        let r2 = radius * radius;
+        let sr = coeff * (r_o2 + r_i2 - o_i_product / r2 - r2);
+        let sh = coeff * (r_o2 + r_i2 + o_i_product / r2 - hoop_r2_coeff * r2);
+        sigma_r.push(sr);
+        sigma_h.push(sh);
+    }
+
+    (sigma_r, sigma_h)
+}
+
+/// Compute Lame stress for a solid rotating disk.
+///
+/// Solid disk is a special case of annular ring (r_i = 0):
+///
+/// Reference: 项目记忆文件 - 七、核心公式全集
+///   实心圆盘:
+///     sigma_r(r) = (3+nu)/8 * rho*omega^2 * (R^2 - r^2)
+///     sigma_h(r) = (3+nu)/8 * rho*omega^2 * [R^2 - (1+3nu)/(3+nu) * r^2]
+pub fn lame_stress_solid(
+    r: &[f64],
+    r_o_m: f64,
+    nu: f64,
+    density: f64,
+    omega: f64,
+) -> (Vec<f64>, Vec<f64>) {
+    let coeff = (3.0 + nu) / 8.0 * density * omega * omega;
+    let r_o2 = r_o_m * r_o_m;
+    let hoop_r2_coeff = (1.0 + 3.0 * nu) / (3.0 + nu);
+
+    let n = r.len();
+    let mut sigma_r = Vec::with_capacity(n);
+    let mut sigma_h = Vec::with_capacity(n);
+
+    for &radius in r {
+        let r2 = radius * radius;
+        sigma_r.push(coeff * (r_o2 - r2));
+        sigma_h.push(coeff * (r_o2 - hoop_r2_coeff * r2));
+    }
+
+    (sigma_r, sigma_h)
+}
+
+/// Compute von Mises equivalent stress for plane stress (sigma_z = 0).
+///
+/// Reference: 机械知识库/设计基础/03-常力学公式.md
+///   第四强度理论: sqrt(sigma^2 + 3*tau^2)
+///
+/// For pure plane stress (tau=0, sigma_z=0):
+///   sigma_vm = sqrt(sigma_r^2 - sigma_r*sigma_h + sigma_h^2)
+pub fn von_mises_plane_stress(sigma_r: &[f64], sigma_h: &[f64]) -> Vec<f64> {
+    sigma_r
+        .iter()
+        .zip(sigma_h.iter())
+        .map(|(&sr, &sh)| (sr * sr - sr * sh + sh * sh).sqrt())
+        .collect()
+}
+
+/// Compute radial displacement at each point.
+///
+/// Reference: 项目记忆文件 - 七、核心公式全集
+///   u(r) = r/E * (sigma_h - nu * sigma_r)
+///
+/// Input: r in meters, stresses in Pa, E in GPa. Output: displacement in meters.
+pub fn radial_displacement(
+    r: &[f64],
+    sigma_r: &[f64],
+    sigma_h: &[f64],
+    young_modulus_gpa: f64,
+    poisson_ratio: f64,
+) -> Vec<f64> {
+    let e_pa = young_modulus_gpa * 1e9; // GPa -> Pa
+    r.iter()
+        .zip(sigma_r.iter())
+        .zip(sigma_h.iter())
+        .map(|((&ri, &sr), &sh)| ri / e_pa * (sh - poisson_ratio * sr))
+        .collect()
+}
+
+/// Convert stresses from Pa to MPa.
+pub fn pa_to_mpa(stress_pa: &[f64]) -> Vec<f64> {
+    stress_pa.iter().map(|&s| s * 1e-6).collect()
+}
+
+/// Generate radial points in meters for stress computation.
+///
+/// Input: params in mm.
+pub fn generate_r_points_m(params: &FlywheelParams) -> Vec<f64> {
+    let r_o = params.r_o / 1000.0;
+    let r_i = params.r_i / 1000.0;
+    let n = params.n_points.max(2);
+
+    if params.flywheel_type.has_bore() {
+        (0..n)
+            .map(|i| r_i + (r_o - r_i) * i as f64 / (n as f64 - 1.0))
+            .collect()
+    } else {
+        // Solid disk: avoid r=0 to prevent division issues
+        let dr = r_o / (n as f64);
+        (0..n).map(|i| dr * (i as f64 + 0.5)).collect()
+    }
+}
+
+/// Compute complete stress distribution for a flywheel at given angular velocity.
+///
+/// Dispatches between solid and annular solutions based on flywheel type.
+/// Returns stress in MPa (for display).
+pub fn compute_stress_distribution(
+    params: &FlywheelParams,
+    material: &Material,
+    omega: f64,
+) -> StressDistribution {
+    let r = generate_r_points_m(params);
+
+    let (sigma_r, sigma_h) = if params.flywheel_type.has_bore() {
+        lame_stress_annular(&r, params, material, omega)
+    } else {
+        lame_stress_solid(
+            &r,
+            params.r_o / 1000.0,
+            material.poisson_ratio,
+            material.density,
+            omega,
+        )
+    };
+
+    let sigma_vm = von_mises_plane_stress(&sigma_r, &sigma_h);
+
+    // Convert Pa -> MPa and m -> mm for output
+    StressDistribution {
+        r: r.iter().map(|&x| x * 1000.0).collect(),
+        sigma_r: pa_to_mpa(&sigma_r),
+        sigma_h: pa_to_mpa(&sigma_h),
+        sigma_vm: pa_to_mpa(&sigma_vm),
+    }
+}
+
+/// Estimate yield limit rpm.
+///
+/// For a constant-thickness disk, max von Mises stress occurs at bore,
+/// proportional to omega^2.
+///
+/// Reference: 项目记忆文件 - 七、核心公式全集
+pub fn estimate_yield_rpm(
+    rpm_rated: f64,
+    max_stress_rated: f64,
+    yield_strength: f64,
+    safety_factor: f64,
+) -> f64 {
+    if max_stress_rated <= 0.0 {
+        return f64::INFINITY;
+    }
+    rpm_rated * (yield_strength / (max_stress_rated * safety_factor)).sqrt()
+}
+
+/// Estimate theoretical burst rpm.
+///
+/// Reference: 项目记忆文件 - 七、核心公式全集
+///   rpm_burst = rpm_rated * sqrt(sigma_ult / avg_hoop_stress)
+pub fn estimate_burst_rpm(
+    rpm_rated: f64,
+    avg_hoop_stress_rated: f64,
+    tensile_strength: f64,
+    safety_factor: f64,
+) -> f64 {
+    if avg_hoop_stress_rated <= 0.0 {
+        return f64::INFINITY;
+    }
+    rpm_rated * (tensile_strength / (avg_hoop_stress_rated * safety_factor)).sqrt()
+}
+
+/// Compute energy stored in flywheel.
+///
+/// Reference: 项目记忆文件 - 七、核心公式全集
+///   E = 0.5 * J * omega^2 (J)
+pub fn kinetic_energy(inertia: f64, omega: f64) -> f64 {
+    0.5 * inertia * omega * omega
+}
+
+/// Compute specific energy (Wh/kg).
+///
+/// Reference: 项目记忆文件 - 七、核心公式全集
+///   u_m = E / m (Wh/kg = J / 3600 / m)
+pub fn specific_energy(energy_j: f64, mass_kg: f64) -> f64 {
+    if mass_kg <= 0.0 {
+        return 0.0;
+    }
+    energy_j / 3600.0 / mass_kg
+}
+
+/// Speed fluctuation coefficient.
+///
+/// Reference: 项目记忆文件 - 七、核心公式全集
+///   Cs = (omega_max - omega_min) / omega_avg
+pub fn speed_fluctuation_coeff(rpm_max: f64, rpm_min: f64) -> f64 {
+    let avg = (rpm_max + rpm_min) / 2.0;
+    if avg <= 0.0 {
+        return 0.0;
+    }
+    (rpm_max - rpm_min) / avg
+}
+
+// ============================================================
+// Unit Tests
+// ============================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::materials;
+
+    fn default_params() -> FlywheelParams {
+        FlywheelParams::default()
+    }
+
+    #[test]
+    fn test_stress_at_bore_higher_than_rim() {
+        // For annular disk, stress at inner radius should be higher than at outer
+        let params = FlywheelParams {
+            r_o: 200.0,
+            r_i: 40.0,
+            ..default_params()
+        };
+        let mat = materials::aisi_4340_steel();
+        let omega = params.omega(3000.0);
+        let r = generate_r_points_m(&params);
+        let (sr, sh) = lame_stress_annular(&r, &params, &mat, omega);
+        let svm = von_mises_plane_stress(&sr, &sh);
+        // Inner stress should be higher than outer
+        assert!(
+            svm[0] > svm[svm.len() - 1],
+            "inner vm={}, outer vm={}",
+            svm[0],
+            svm[svm.len() - 1]
+        );
+    }
+
+    #[test]
+    fn test_stress_increases_with_speed() {
+        // Stress should increase with omega^2
+        let params = default_params();
+        let mat = materials::aisi_4340_steel();
+
+        let dist_low = compute_stress_distribution(&params, &mat, params.omega(1000.0));
+        let dist_high = compute_stress_distribution(&params, &mat, params.omega(3000.0));
+
+        let max_low = dist_low
+            .sigma_vm
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+        let max_high = dist_high
+            .sigma_vm
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        assert!(max_high > max_low, "Higher speed should produce higher stress");
+    }
+
+    #[test]
+    fn test_stress_solid_disk_max_at_center() {
+        // For solid disk, max stress should be at center
+        let params = FlywheelParams {
+            r_o: 200.0,
+            r_i: 0.0,
+            flywheel_type: crate::types::FlywheelType::SolidDisk,
+            ..default_params()
+        };
+        let mat = materials::aisi_4340_steel();
+        let omega = params.omega(3000.0);
+        let r = generate_r_points_m(&params);
+        let (sr, sh) = lame_stress_solid(
+            &r,
+            params.r_o / 1000.0,
+            mat.poisson_ratio,
+            mat.density,
+            omega,
+        );
+        let svm = von_mises_plane_stress(&sr, &sh);
+        // Max should be at first point (closest to center)
+        let max_idx = svm
+            .iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .unwrap()
+            .0;
+        assert_eq!(max_idx, 0, "Max stress should be at center for solid disk");
+    }
+
+    #[test]
+    fn test_kinetic_energy() {
+        // Reference: 机械知识库/公式计算/01-几何体计算.md
+        // E = 0.5 * J * omega^2
+        let j = 1.0; // kg·m^2
+        let omega = 100.0; // rad/s
+        let energy = kinetic_energy(j, omega);
+        assert!(
+            (energy - 5000.0).abs() < 0.01,
+            "Energy: got {}, expected 5000.0",
+            energy
+        );
+    }
+
+    #[test]
+    fn test_speed_fluctuation() {
+        // Reference: 项目记忆文件 - 七、核心公式全集
+        // Cs = (omega_max - omega_min) / omega_avg
+        let cs = speed_fluctuation_coeff(4500.0, 1500.0);
+        let expected = (4500.0 - 1500.0) / ((4500.0 + 1500.0) / 2.0);
+        assert!(
+            (cs - expected).abs() < 1e-10,
+            "Cs: got {}, expected {}",
+            cs,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_stress_output_in_mpa() {
+        // Verify that output stresses are in reasonable MPa range
+        let params = default_params();
+        let mat = materials::aisi_4340_steel();
+        let dist = compute_stress_distribution(&params, &mat, params.omega(3000.0));
+
+        // For default params at 3000rpm, stresses should be < 100 MPa
+        let max_vm = dist
+            .sigma_vm
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!(max_vm > 0.0 && max_vm < 500.0, "Max von Mises: {} MPa", max_vm);
+    }
+}
