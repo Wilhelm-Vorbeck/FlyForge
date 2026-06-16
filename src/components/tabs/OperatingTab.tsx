@@ -54,9 +54,9 @@ const OperatingTab: Component = () => {
       {/* Speed */}
       <h3 class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">转速</h3>
       <div class="space-y-1.5">
-        <NumberInput label="额定" value={p().rpm_rated} onChange={(v) => ctx.setParams({ rpm_rated: v })} unit="rpm" min={100} max={50000} step={100} />
-        <NumberInput label="最大" value={p().rpm_max} onChange={(v) => ctx.setParams({ rpm_max: v })} unit="rpm" min={100} max={100000} step={100} />
-        <NumberInput label="最小" value={p().rpm_min} onChange={(v) => ctx.setParams({ rpm_min: v })} unit="rpm" min={0} max={50000} step={100} />
+        <NumberInput label="额定" value={p().rpm_rated} onChange={(v) => ctx.setParams({ rpm_rated: v })} unit="rpm" min={100} max={50000} step={1} />
+        <NumberInput label="最大" value={p().rpm_max} onChange={(v) => ctx.setParams({ rpm_max: v })} unit="rpm" min={100} max={100000} step={1} />
+        <NumberInput label="最小" value={p().rpm_min} onChange={(v) => ctx.setParams({ rpm_min: v })} unit="rpm" min={0} max={50000} step={1} />
       </div>
 
       {/* Safety factors */}

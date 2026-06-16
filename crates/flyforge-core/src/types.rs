@@ -466,7 +466,7 @@ impl FlywheelParams {
         ];
         for (name, val) in &float_fields {
             if !val.is_finite() {
-                return Err(format!("Parameter '{}' must be finite, got {}", name, val));
+                return Err(format!("参数 '{}' 必须为有效数字，当前值 {}", name, val));
             }
         }
         // Outer radius must be positive
