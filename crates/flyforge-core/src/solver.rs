@@ -7,12 +7,14 @@
 //! Reference: 项目记忆文件 - 四、核心架构设计（关键经验）
 //! Reference: CamForge architecture pattern
 
+use crate::energy;
 use crate::geometry;
 use crate::inertia;
+use crate::safety;
 use crate::stress;
 use crate::types::{
-    FlywheelParams, FlywheelSection, FlywheelType, InertiaResult, Material, SolverOutput,
-    StressDistribution,
+    FlywheelParams, FlywheelSimulation, FlywheelSection, FlywheelType, InertiaResult, Material,
+    SolverOutput, StressDistribution,
 };
 
 // ============================================================
@@ -372,12 +374,124 @@ impl SolverRegistry {
             stress,
         })
     }
+
+    /// Run complete flywheel simulation with safety and energy analysis.
+    ///
+    /// This generates the full FlywheelSimulation result including:
+    /// - Geometry and inertia
+    /// - Stress distribution at rated speed
+    /// - Safety analysis (yield, fatigue, burst)
+    /// - Energy analysis (specific energy, usable energy)
+    ///
+    /// Reference: 项目记忆文件 - 八、完整功能需求
+    pub fn simulate(
+        &self,
+        params: &FlywheelParams,
+        material: &Material,
+    ) -> Result<FlywheelSimulation, String> {
+        // Step 1: Run basic computation pipeline
+        let output = self.solve(params, material)?;
+
+        // Step 2: Safety analysis
+        let safety_result = safety::analyze_safety(params, material, &output.stress);
+
+        // Step 3: Energy analysis
+        // Default charge time: 60 seconds
+        let charge_time = 60.0;
+        let energy_result = energy::analyze_energy(
+            output.inertia.moment_of_inertia,
+            output.inertia.mass,
+            params.rpm_rated,
+            params.rpm_max,
+            params.rpm_min,
+            charge_time,
+        );
+
+        // Step 4: Generate rpm-time curve (simplified)
+        let (time_curve, rpm_curve) = generate_rpm_curve(
+            params.rpm_min,
+            params.rpm_max,
+            charge_time,
+            charge_time * 2.0,
+            100,
+        );
+
+        // Step 5: Find max stress and location
+        let max_vm = output
+            .stress
+            .sigma_vm
+            .iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .map(|(idx, &val)| (idx, val))
+            .unwrap_or((0, 0.0));
+
+        // Step 6: Build complete simulation result
+        Ok(FlywheelSimulation {
+            params: params.clone(),
+            material: material.clone(),
+            mass: output.inertia.mass,
+            moment_of_inertia: output.inertia.moment_of_inertia,
+            stress_rated: output.stress.clone(),
+            max_stress_rated: max_vm.1,
+            max_stress_location: output.stress.r[max_vm.0],
+            rpm_yield: safety_result.rpm_yield,
+            rpm_burst: safety_result.rpm_burst,
+            rpm_burst_safe: safety_result.rpm_burst_safe,
+            energy_rated: energy_result.energy_rated,
+            energy_max: energy_result.energy_max,
+            energy_usable: energy_result.energy_usable,
+            specific_energy: energy_result.specific_energy,
+            specific_power: energy_result.specific_power,
+            speed_fluctuation: energy_result.speed_fluctuation,
+            rpm_curve,
+            time_curve,
+            actual_safety_yield: safety_result.n_yield,
+            actual_safety_fatigue: safety_result.n_fatigue,
+            safety_passed: safety_result.safety_passed,
+            safety_warnings: safety_result.warnings,
+        })
+    }
 }
 
 impl Default for SolverRegistry {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Generate simplified rpm-time curve.
+///
+/// Simulates charge (acceleration) and discharge (deceleration) phases.
+fn generate_rpm_curve(
+    rpm_min: f64,
+    rpm_max: f64,
+    charge_time_s: f64,
+    discharge_time_s: f64,
+    n_points: usize,
+) -> (Vec<f64>, Vec<f64>) {
+    let total_t = charge_time_s + discharge_time_s;
+    let dt = total_t / (n_points as f64 - 1.0);
+
+    let mut time = Vec::with_capacity(n_points);
+    let mut rpm = Vec::with_capacity(n_points);
+
+    for i in 0..n_points {
+        let t = i as f64 * dt;
+        time.push(t);
+
+        let speed = if t <= charge_time_s {
+            // Linear acceleration
+            rpm_min + (rpm_max - rpm_min) * (t / charge_time_s)
+        } else {
+            // Linear deceleration
+            let t_discharge = t - charge_time_s;
+            rpm_max - (rpm_max - rpm_min) * (t_discharge / discharge_time_s)
+        };
+        rpm.push(speed);
+    }
+
+    (time, rpm)
 }
 
 // ============================================================
@@ -447,5 +561,80 @@ mod tests {
 
         let result = registry.solve(&params, &material);
         assert!(result.is_err(), "Should fail with invalid params");
+    }
+
+    #[test]
+    fn test_simulate_basic() {
+        // Test complete simulation with default params
+        let registry = SolverRegistry::new();
+        let params = FlywheelParams::default();
+        let material = crate::types::materials::aisi_4340_steel();
+
+        let result = registry.simulate(&params, &material);
+        assert!(result.is_ok(), "Simulate should succeed: {:?}", result.err());
+
+        let sim = result.unwrap();
+
+        // Verify basic properties
+        assert!(sim.mass > 0.0, "Mass should be positive");
+        assert!(sim.moment_of_inertia > 0.0, "Inertia should be positive");
+        assert!(sim.max_stress_rated > 0.0, "Max stress should be positive");
+
+        // Verify safety analysis
+        assert!(sim.actual_safety_yield > 0.0, "Yield SF should be positive");
+        assert!(sim.actual_safety_fatigue > 0.0, "Fatigue SF should be positive");
+        assert!(sim.rpm_yield > 0.0, "Yield rpm should be positive");
+        assert!(sim.rpm_burst > 0.0, "Burst rpm should be positive");
+
+        // Verify energy analysis
+        assert!(sim.energy_rated > 0.0, "Energy rated should be positive");
+        assert!(sim.energy_max > sim.energy_rated, "Max energy should > rated");
+        assert!(sim.energy_usable > 0.0, "Usable energy should be positive");
+        assert!(sim.specific_energy > 0.0, "Specific energy should be positive");
+
+        // Verify curves
+        assert_eq!(sim.rpm_curve.len(), 100, "Should have 100 curve points");
+        assert_eq!(sim.time_curve.len(), 100, "Should have 100 time points");
+    }
+
+    #[test]
+    fn test_simulate_with_different_materials() {
+        // Test simulation with all built-in materials
+        let registry = SolverRegistry::new();
+        let params = FlywheelParams::default();
+
+        for material in crate::types::materials::all() {
+            let result = registry.simulate(&params, &material);
+            assert!(result.is_ok(),
+                "Simulate should succeed for {}: {:?}",
+                material.name, result.err());
+        }
+    }
+
+    #[test]
+    fn test_simulate_all_flywheel_types() {
+        // Test simulation with all flywheel types
+        let registry = SolverRegistry::new();
+        let material = crate::types::materials::aisi_4340_steel();
+
+        let types = vec![
+            (FlywheelType::SolidDisk, true),
+            (FlywheelType::AnnularRing, true),
+            (FlywheelType::TaperedDisk, true),
+            (FlywheelType::ConstantStrength, true),
+            (FlywheelType::MultiLayerComposite, true),
+        ];
+
+        for (ft, has_bore) in types {
+            let params = FlywheelParams {
+                flywheel_type: ft,
+                r_i: if has_bore { 40.0 } else { 0.0 },
+                ..Default::default()
+            };
+            let result = registry.simulate(&params, &material);
+            assert!(result.is_ok(),
+                "Simulate should succeed for {:?}: {:?}",
+                ft, result.err());
+        }
     }
 }
