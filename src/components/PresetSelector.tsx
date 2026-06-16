@@ -38,7 +38,7 @@ const PresetSelector: Component = () => {
                   )}
                 </div>
                 <div class="flex items-center space-x-3 mt-2 text-xs text-gray-400">
-                  <span>R{o}={preset.params.r_o}mm</span>
+                  <span>{`Ro=${preset.params.r_o}mm`}</span>
                   <span>{preset.params.rpm_rated}rpm</span>
                   <span>{FlywheelTypeNames[preset.params.flywheel_type]?.zh || ""}</span>
                 </div>

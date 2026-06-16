@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/flyforge-core", "crates/flyforge-server"]
+exclude = ["src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
