@@ -12,6 +12,7 @@ pub mod geometry;
 pub mod inertia;
 pub mod stress;
 pub mod safety;
+pub mod energy;
 
 // ============================================================
 // Integration Tests
