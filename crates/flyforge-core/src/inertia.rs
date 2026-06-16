@@ -286,4 +286,60 @@ mod tests {
         // Multi-layer inertia should be in reasonable range
         assert!(multi.moment_of_inertia > 0.1, "Multi-layer inertia {} too small", multi.moment_of_inertia);
     }
+
+    #[test]
+    fn test_numerical_vs_analytical_annular() {
+        // Numerical integration vs analytical for constant-thickness section.
+        // For constant-thickness, analytical is always used in production.
+        // Numerical is for variable-thickness sections (tapered, constant-strength).
+        // Reference: 机械知识库/公式计算/01-几何体计算.md
+        let params = default_params(); // AnnularRing
+        let mat = materials::aisi_4340_steel();
+
+        let analytical = mass_inertia_annular(&params, &mat);
+        let section = crate::geometry::section_annular_ring(&params);
+        let numerical = mass_inertia_numerical(&section, &mat);
+
+        let mass_error = ((numerical.mass - analytical.mass) / analytical.mass).abs();
+        let inertia_error = ((numerical.moment_of_inertia - analytical.moment_of_inertia) / analytical.moment_of_inertia).abs();
+
+        // Numerical integration should be within 5% of analytical
+        assert!(mass_error < 0.05,
+            "Mass: analytical={}, numerical={}, error={:.2}%",
+            analytical.mass, numerical.mass, mass_error * 100.0);
+        assert!(inertia_error < 0.05,
+            "Inertia: analytical={}, numerical={}, error={:.2}%",
+            analytical.moment_of_inertia, numerical.moment_of_inertia, inertia_error * 100.0);
+    }
+
+    #[test]
+    fn test_numerical_vs_analytical_solid() {
+        // Precision test for solid disk
+        let params = FlywheelParams {
+            r_i: 0.0,
+            flywheel_type: FlywheelType::SolidDisk,
+            ..default_params()
+        };
+        let mat = materials::aisi_4340_steel();
+
+        let analytical = mass_inertia_solid(&params, &mat);
+        let section = crate::geometry::section_solid_disk(&params);
+        let numerical = mass_inertia_numerical(&section, &mat);
+
+        let mass_error = ((numerical.mass - analytical.mass) / analytical.mass).abs();
+        assert!(mass_error < 0.05,
+            "Solid disk mass: analytical={}, numerical={}, error={:.2}%",
+            analytical.mass, numerical.mass, mass_error * 100.0);
+    }
+
+    #[test]
+    fn test_all_materials_inertia_positive() {
+        // Verify inertia is positive for all 12 materials
+        let params = default_params();
+        for mat in materials::all() {
+            let result = mass_inertia_annular(&params, &mat);
+            assert!(result.mass > 0.0, "Mass should be positive for {}", mat.name);
+            assert!(result.moment_of_inertia > 0.0, "Inertia should be positive for {}", mat.name);
+        }
+    }
 }

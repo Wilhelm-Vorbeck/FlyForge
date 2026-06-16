@@ -363,12 +363,134 @@ mod tests {
         let mat = materials::aisi_4340_steel();
         let dist = compute_stress_distribution(&params, &mat, params.omega(3000.0));
 
-        // For default params at 3000rpm, stresses should be < 100 MPa
+        // For default params at 3000rpm, stresses should be < 500 MPa
         let max_vm = dist
             .sigma_vm
             .iter()
             .cloned()
             .fold(f64::NEG_INFINITY, f64::max);
         assert!(max_vm > 0.0 && max_vm < 500.0, "Max von Mises: {} MPa", max_vm);
+    }
+
+    #[test]
+    fn test_lame_annular_boundary_conditions() {
+        // For free-boundary annular disk:
+        // sigma_r should be zero at r=r_i and r=r_o (free surfaces)
+        // Reference: 项目记忆文件 - 七、核心公式全集
+        let params = default_params(); // r_o=200, r_i=40
+        let mat = materials::aisi_4340_steel();
+        let omega = params.omega(3000.0);
+
+        let r = generate_r_points_m(&params);
+        let (sigma_r, _) = lame_stress_annular(&r, &params, &mat, omega);
+
+        // At inner boundary (first point), sigma_r should be ~0
+        let sr_inner = sigma_r[0];
+        // At outer boundary (last point), sigma_r should be ~0
+        let sr_outer = sigma_r[sigma_r.len() - 1];
+
+        assert!(sr_inner.abs() < 1e6,
+            "Radial stress at inner boundary should be ~0, got {} Pa", sr_inner);
+        assert!(sr_outer.abs() < 1e6,
+            "Radial stress at outer boundary should be ~0, got {} Pa", sr_outer);
+    }
+
+    #[test]
+    fn test_lame_annular_hoop_always_positive() {
+        // Hoop stress should always be positive (tensile) for rotating disk
+        let params = default_params();
+        let mat = materials::aisi_4340_steel();
+        let omega = params.omega(3000.0);
+
+        let r = generate_r_points_m(&params);
+        let (_, sigma_h) = lame_stress_annular(&r, &params, &mat, omega);
+
+        for (i, &sh) in sigma_h.iter().enumerate() {
+            assert!(sh > 0.0,
+                "Hoop stress should be positive at point {}, got {} Pa", i, sh);
+        }
+    }
+
+    #[test]
+    fn test_lame_solid_max_stress_at_center() {
+        // For solid disk, both sigma_r and sigma_h are maximum at r=0
+        // sigma_r(0) = sigma_h(0) = (3+nu)/8 * rho * omega^2 * R^2
+        // Reference: 项目记忆文件 - 七、核心公式全集
+        let params = FlywheelParams {
+            r_o: 200.0,
+            r_i: 0.0,
+            flywheel_type: crate::types::FlywheelType::SolidDisk,
+            ..default_params()
+        };
+        let mat = materials::aisi_4340_steel();
+        let omega = params.omega(3000.0);
+
+        let r = generate_r_points_m(&params);
+        let (sigma_r, sigma_h) = lame_stress_solid(
+            &r,
+            params.r_o / 1000.0,
+            mat.poisson_ratio,
+            mat.density,
+            omega,
+        );
+
+        // Max radial stress should be at first point (closest to center)
+        let max_r_idx = sigma_r.iter().enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap()).unwrap().0;
+        assert_eq!(max_r_idx, 0, "Max radial stress should be at center");
+
+        // Max hoop stress should be at first point
+        let max_h_idx = sigma_h.iter().enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap()).unwrap().0;
+        assert_eq!(max_h_idx, 0, "Max hoop stress should be at center");
+    }
+
+    #[test]
+    fn test_stress_analytical_check_solid_center() {
+        // Verify against analytical formula at center of solid disk:
+        // sigma_r = sigma_h = (3+nu)/8 * rho * omega^2 * R^2
+        // Reference: 项目记忆文件 - 七、核心公式全集
+        let r_o_m: f64 = 0.2; // 200mm
+        let nu: f64 = 0.29;   // AISI 4340
+        let rho: f64 = 7850.0; // kg/m^3
+        let rpm: f64 = 3000.0;
+        let omega: f64 = rpm * std::f64::consts::PI / 30.0;
+
+        let expected = (3.0 + nu) / 8.0 * rho * omega * omega * r_o_m * r_o_m;
+
+        let r = vec![0.001]; // Near center
+        let (sigma_r, sigma_h) = lame_stress_solid(&r, r_o_m, nu, rho, omega);
+
+        // At r~0, sigma_r ≈ sigma_h ≈ expected
+        let error_r = ((sigma_r[0] - expected) / expected).abs();
+        let error_h = ((sigma_h[0] - expected) / expected).abs();
+
+        assert!(error_r < 0.01,
+            "Radial stress at center: expected {:.0} Pa, got {:.0} Pa, error {:.2}%",
+            expected, sigma_r[0], error_r * 100.0);
+        assert!(error_h < 0.01,
+            "Hoop stress at center: expected {:.0} Pa, got {:.0} Pa, error {:.2}%",
+            expected, sigma_h[0], error_h * 100.0);
+    }
+
+    #[test]
+    fn test_energy_formula_verification() {
+        // E = 0.5 * J * omega^2
+        // At 3000rpm: omega = 314.16 rad/s
+        // For J=1.0 kg·m^2: E = 0.5 * 1.0 * 314.16^2 = 49348.0 J ≈ 49.3 kJ
+        let j: f64 = 1.0;
+        let omega: f64 = 3000.0 * std::f64::consts::PI / 30.0;
+        let energy = kinetic_energy(j, omega);
+        let expected = 0.5 * j * omega * omega;
+
+        assert!((energy - expected).abs() < 0.01,
+            "Energy: got {}, expected {}", energy, expected);
+
+        // Verify specific energy
+        let mass: f64 = 50.0; // kg
+        let se = specific_energy(energy, mass);
+        let expected_se = energy / 3600.0 / mass;
+        assert!((se - expected_se).abs() < 1e-10,
+            "Specific energy: got {}, expected {}", se, expected_se);
     }
 }
