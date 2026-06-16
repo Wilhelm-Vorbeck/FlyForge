@@ -1,6 +1,6 @@
 {
   "name": "flyforge",
-  "version": "0.1.0",
+  "version": "0.7.0",
   "description": "Flywheel design and kinematics simulation tool",
   "type": "module",
   "scripts": {
@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "solid-js": "^1.9.0",
-    "@tauri-apps/api": "^2.0.0"
+    "@tauri-apps/api": "^2.0.0",
+    "solid-icons": "^1.1.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
