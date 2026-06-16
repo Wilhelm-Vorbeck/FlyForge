@@ -255,4 +255,46 @@ mod tests {
         assert!((result.final_time - 0.5).abs() < 0.01,
             "Final time: got {}, expected 0.5", result.final_time);
     }
+
+    #[test]
+    fn test_rk4_accuracy_linear_acceleration() {
+        // RK4 should be very accurate for linear problems
+        // ω(t) = ω_0 + α*t where α = T/J = 10 rad/s²
+        let torque_fn = constant_torque(10.0);
+        let h = 0.01;
+        let t_final = 1.0;
+        let n_steps = (t_final / h) as usize;
+
+        let result = simulate_dynamics(1.0, &torque_fn, 0.0, h, n_steps, t_final);
+
+        // Exact solution: ω(1) = 0 + 10*1 = 10 rad/s
+        let expected = 10.0;
+        let error = (result.final_omega - expected).abs();
+        let rel_error = error / expected;
+
+        assert!(rel_error < 0.001,
+            "RK4 accuracy: got {}, expected {}, relative error {:.6}",
+            result.final_omega, expected, rel_error);
+    }
+
+    #[test]
+    fn test_rk4_accuracy_exponential_decay() {
+        // With viscous friction: dω/dt = -ω → ω(t) = ω_0 * exp(-t)
+        let torque_fn = viscous_friction_torque(1.0);
+        let h = 0.01;
+        let t_final = 1.0;
+        let n_steps = (t_final / h) as usize;
+        let omega_0 = 10.0;
+
+        let result = simulate_dynamics(1.0, &torque_fn, omega_0, h, n_steps, t_final);
+
+        // Exact solution: ω(1) = 10 * exp(-1) ≈ 3.678794
+        let expected = omega_0 * (-1.0_f64).exp();
+        let error = (result.final_omega - expected).abs();
+        let rel_error = error / expected;
+
+        assert!(rel_error < 0.01,
+            "RK4 exponential decay: got {}, expected {}, relative error {:.4}",
+            result.final_omega, expected, rel_error);
+    }
 }
