@@ -15,6 +15,7 @@ pub mod safety;
 pub mod energy;
 pub mod dynamics;
 pub mod unbalance;
+pub mod export;
 
 // ============================================================
 // Integration Tests

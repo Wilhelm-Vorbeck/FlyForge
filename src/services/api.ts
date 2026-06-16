@@ -54,3 +54,38 @@ export async function runSimulationWithState(
     setLoading(false);
   }
 }
+
+/**
+ * Export simulation result to CSV
+ */
+export async function exportSimulationCsv(sim: FlywheelSimulation): Promise<string> {
+  return await invoke("export_simulation_csv", { sim });
+}
+
+/**
+ * Export simulation result to JSON
+ */
+export async function exportSimulationJson(sim: FlywheelSimulation): Promise<string> {
+  return await invoke("export_simulation_json", { sim });
+}
+
+/**
+ * Export simulation result to SVG (stress chart)
+ */
+export async function exportSimulationSvg(sim: FlywheelSimulation): Promise<string> {
+  return await invoke("export_simulation_svg", { sim });
+}
+
+/**
+ * Export parameters to JSON
+ */
+export async function exportParams(params: FlywheelParams): Promise<string> {
+  return await invoke("export_params", { params });
+}
+
+/**
+ * Import parameters from JSON
+ */
+export async function importParams(json: string): Promise<FlywheelParams> {
+  return await invoke("import_params", { json });
+}

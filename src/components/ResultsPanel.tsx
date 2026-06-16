@@ -1,6 +1,7 @@
 import { Component, Show, For } from "solid-js";
 import { useAppContext } from "../store";
 import { runSimulationWithState } from "../services/api";
+import ExportPanel from "./ExportPanel";
 
 interface ResultCardProps {
   title: string;
@@ -211,7 +212,7 @@ const ResultsPanel: Component = () => {
 
             {/* Safety Status */}
             <div
-              class={`rounded-lg p-4 ${
+              class={`rounded-lg p-4 mb-6 ${
                 simulation().safety_passed
                   ? "bg-green-900/30 border border-green-700"
                   : "bg-red-900/30 border border-red-700"
@@ -232,6 +233,9 @@ const ResultsPanel: Component = () => {
                 </span>
               </div>
             </div>
+
+            {/* Export Panel */}
+            <ExportPanel />
           </div>
         )}
       </Show>
