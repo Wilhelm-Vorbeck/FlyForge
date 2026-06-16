@@ -11,7 +11,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Standard Steel Flywheel",
     name_zh: "标准钢制飞轮",
-    description: "通用工业飞轮设计，适用于储能系统",
+    description: "通用工业储能",
     params: {
       r_o: 200,
       r_i: 40,
@@ -32,7 +32,7 @@ export const PRESETS: Preset[] = [
   {
     name: "High-Speed Composite",
     name_zh: "高速碳纤维飞轮",
-    description: "碳纤维复合材料，高比能量密度",
+    description: "高性能储能系统",
     params: {
       r_o: 150,
       r_i: 30,
@@ -53,7 +53,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Solid Disk Low-Speed",
     name_zh: "低速实心飞轮",
-    description: "实心圆盘结构，适用于低速储能场景",
+    description: "教学演示",
     params: {
       r_o: 300,
       r_i: 0,
@@ -74,7 +74,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Tapered Disk Optimized",
     name_zh: "锥形优化飞轮",
-    description: "锥形截面质量优化设计",
+    description: "质量优化设计",
     params: {
       r_o: 180,
       r_i: 35,
@@ -95,7 +95,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Multi-Layer Heavy-Duty",
     name_zh: "多层重型飞轮",
-    description: "三层结构设计，适用于重型工业储能",
+    description: "重型工业储能",
     params: {
       r_o: 250,
       r_i: 50,
@@ -116,7 +116,7 @@ export const PRESETS: Preset[] = [
   {
     name: "Constant Strength Profile",
     name_zh: "等强度轮廓飞轮",
-    description: "等强度设计，应力均匀分布最优",
+    description: "高速储能",
     params: {
       r_o: 200,
       r_i: 40,

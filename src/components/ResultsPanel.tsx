@@ -1,6 +1,5 @@
 import { Component, Show, For } from "solid-js";
 import { useAppContext } from "../store";
-import { runSimulationWithState } from "../services/api";
 import ExportPanel from "./ExportPanel";
 
 interface MiniCardProps {
@@ -26,20 +25,31 @@ const ResultsPanel: Component = () => {
 
   return (
     <div class="space-y-3">
-      {/* Run button */}
-      <button
-        onClick={() => runSimulationWithState(ctx.state().params, ctx.setLoading, ctx.setError, ctx.setSimulation)}
-        disabled={ctx.state().isLoading}
-        class="w-full btn-primary py-1.5 text-xs"
-      >
-        {ctx.state().isLoading ? "计算中..." : "▶ 运行仿真"}
-      </button>
+      <h3 class="text-xs font-semibold text-gray-400">计算结果</h3>
+
+      {/* Loading indicator */}
+      <Show when={ctx.state().isLoading}>
+        <div class="flex items-center space-x-2 text-blue-400">
+          <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span class="text-[10px]">计算中...</span>
+        </div>
+      </Show>
+
+      {/* Error */}
+      <Show when={ctx.state().error}>
+        <div class="bg-red-900/20 border border-red-800/50 rounded px-2 py-1.5">
+          <p class="text-[10px] text-red-400">{ctx.state().error}</p>
+        </div>
+      </Show>
 
       <Show
         when={sim()}
         fallback={
-          <div class="text-center py-8 text-gray-500 text-xs">
-            <p>配置参数后点击运行</p>
+          <div class="text-center py-8 text-gray-500 text-[10px]">
+            <p>修改参数后自动计算</p>
           </div>
         }
       >

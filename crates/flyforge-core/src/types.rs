@@ -471,49 +471,49 @@ impl FlywheelParams {
         }
         // Outer radius must be positive
         if self.r_o <= 0.0 {
-            return Err(format!("r_o must be > 0, got {}", self.r_o));
+            return Err(format!("外径必须大于 0，当前值 {}", self.r_o));
         }
         // Inner radius cannot be negative, must be less than outer radius
         if self.r_i < 0.0 {
-            return Err(format!("r_i cannot be negative, got {}", self.r_i));
+            return Err(format!("内径不能为负数，当前值 {}", self.r_i));
         }
         if self.flywheel_type.has_bore() && self.r_i >= self.r_o {
-            return Err(format!("r_i ({}) must be < r_o ({})", self.r_i, self.r_o));
+            return Err(format!("内径 {} 必须小于外径 {}", self.r_i, self.r_o));
         }
         // Thickness must be positive
         if self.thickness <= 0.0 {
-            return Err(format!("thickness must be > 0, got {}", self.thickness));
+            return Err(format!("厚度必须大于 0，当前值 {}", self.thickness));
         }
         // Speed ordering: min < rated < max
         if self.rpm_min >= self.rpm_rated {
             return Err(format!(
-                "rpm_min ({}) must be < rpm_rated ({})",
+                "最小转速 {} 必须小于额定转速 {}",
                 self.rpm_min, self.rpm_rated
             ));
         }
         if self.rpm_rated >= self.rpm_max {
             return Err(format!(
-                "rpm_rated ({}) must be < rpm_max ({})",
+                "额定转速 {} 必须小于最大转速 {}",
                 self.rpm_rated, self.rpm_max
             ));
         }
         // Speed cannot be negative
         if self.rpm_min <= 0.0 {
-            return Err("rpm_min must be > 0".into());
+            return Err("最小转速必须大于 0".into());
         }
         // Discretization points range
         if self.n_points < 20 {
-            return Err("n_points must be >= 20".into());
+            return Err("离散点数不能少于 20".into());
         }
         if self.n_points > 500 {
-            return Err("n_points must be <= 500".into());
+            return Err("离散点数不能超过 500".into());
         }
         // Safety factors must be positive
         if self.safety_factor_yield <= 0.0
             || self.safety_factor_fatigue <= 0.0
             || self.safety_factor_burst <= 0.0
         {
-            return Err("Safety factors must be positive".into());
+            return Err("安全系数必须为正数".into());
         }
         Ok(())
     }
