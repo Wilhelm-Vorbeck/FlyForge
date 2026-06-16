@@ -1,6 +1,7 @@
-import { Component, createSignal } from "solid-js";
+import { Component, createSignal, createEffect } from "solid-js";
 import { useAppContext } from "../store";
 import { FlywheelType, FlywheelTypeNames } from "../types";
+import { runSimulationWithState } from "../services/api";
 import GeometryTab from "./tabs/GeometryTab";
 import MaterialTab from "./tabs/MaterialTab";
 import OperatingTab from "./tabs/OperatingTab";
@@ -9,6 +10,7 @@ type TabId = "geometry" | "material" | "operating";
 
 const Sidebar: Component = () => {
   const [activeTab, setActiveTab] = createSignal<TabId>("geometry");
+  const [autoRun, setAutoRun] = createSignal(false);
   const context = useAppContext();
 
   const tabs = [
@@ -16,6 +18,27 @@ const Sidebar: Component = () => {
     { id: "material" as TabId, label: "材料选择", icon: "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" },
     { id: "operating" as TabId, label: "工况参数", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
   ];
+
+  // Auto-run simulation when parameters change (debounced)
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  createEffect(() => {
+    // Access params to trigger effect on change
+    const params = context.state().params;
+    
+    if (!autoRun()) return;
+    
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      if (!context.state().isLoading) {
+        runSimulationWithState(
+          params,
+          context.setLoading,
+          context.setError,
+          context.setSimulation
+        );
+      }
+    }, 500); // 500ms debounce
+  });
 
   return (
     <div class="h-full flex flex-col">
@@ -73,6 +96,25 @@ const Sidebar: Component = () => {
             <option value={value}>{names.zh}</option>
           ))}
         </select>
+      </div>
+
+      {/* Auto-run toggle */}
+      <div class="border-t border-gray-700 p-4">
+        <label class="flex items-center space-x-3 cursor-pointer">
+          <div
+            class={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              autoRun() ? "bg-blue-600" : "bg-gray-600"
+            }`}
+            onClick={() => setAutoRun(!autoRun())}
+          >
+            <div
+              class={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                autoRun() ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </div>
+          <span class="text-sm text-gray-300">参数变化时自动计算</span>
+        </label>
       </div>
     </div>
   );
