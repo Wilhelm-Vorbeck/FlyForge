@@ -28,23 +28,32 @@ const ExportPanel: Component = () => {
       else                     { content = await exportParams(ctx.state().params); filename = `params_${Date.now()}.json`; mime = "application/json"; }
 
       if (useDialog()) {
-        // Use Tauri save dialog
         try {
-          const ext = fmt === "svg" ? "svg" : fmt === "csv" ? "csv" : "json";
-          const filterName = fmt === "svg" ? "SVG文件" : fmt === "csv" ? "CSV文件" : "JSON文件";
-          const filePath = await invoke<string | null>("show_save_dialog", {
-            defaultName: filename,
-            extension: ext,
-            filterName,
+          const ext = fmt === "svg" ? ".svg" : fmt === "csv" ? ".csv" : ".json";
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: filename,
+            types: [{
+              description: fmt === "svg" ? "SVG文件" : fmt === "csv" ? "CSV文件" : "JSON文件",
+              accept: { [mime]: [ext] },
+            }],
           });
-          if (filePath) {
-            await invoke("save_file_content", { path: filePath, content });
-            setStatus(`已保存到: ${filePath}`);
-          } else {
+          const writable = await handle.createWritable();
+          await writable.write(content);
+          await writable.close();
+          setStatus(`已保存到: ${handle.name}`);
+        } catch (dialogErr: any) {
+          if (dialogErr?.name === "AbortError") {
             setStatus(null);
+          } else {
+            // Fallback: invoke backend
+            const filePath = prompt("输入保存路径（含文件名）:", filename);
+            if (filePath) {
+              await invoke("save_file_content", { path: filePath, content });
+              setStatus(`已保存到: ${filePath}`);
+            } else {
+              setStatus(null);
+            }
           }
-        } catch (dialogErr) {
-          setStatus(`对话框错误: ${dialogErr}`);
         }
       } else {
         // Default: browser download
