@@ -29,7 +29,7 @@ const ResultsPanel: Component = () => {
       <div class="flex items-center space-x-2">
         <h3 class="text-xs font-semibold text-gray-400">计算结果</h3>
         <Show when={ctx.state().isLoading && !ctx.state().error}>
-          <svg class="animate-spin h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin h-3 w-3 text-emerald-400" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>

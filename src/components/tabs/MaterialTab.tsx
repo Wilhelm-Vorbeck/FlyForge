@@ -30,7 +30,7 @@ const MaterialTab: Component = () => {
       <select
         value={ctx.state().params.material_id}
         onChange={(e) => ctx.setParams({ material_id: e.target.value })}
-        class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+        class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
       >
         <For each={MATERIALS}>
           {(m) => <option value={m.id}>{m.name_zh}</option>}

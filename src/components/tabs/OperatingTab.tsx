@@ -34,7 +34,7 @@ const OperatingTab: Component = () => {
       <div class="bg-gray-700/50 rounded p-2 mt-2">
         <div class="relative h-4 bg-gray-600 rounded-full overflow-hidden">
           <div class="absolute top-0 bottom-0 left-0 bg-green-500/40" style={{ width: `${(p().rpm_min / p().rpm_max) * 100}%` }} />
-          <div class="absolute top-0 bottom-0 bg-blue-500/40" style={{ left: `${(p().rpm_min / p().rpm_max) * 100}%`, width: `${((p().rpm_rated - p().rpm_min) / p().rpm_max) * 100}%` }} />
+          <div class="absolute top-0 bottom-0 bg-emerald-500/40" style={{ left: `${(p().rpm_min / p().rpm_max) * 100}%`, width: `${((p().rpm_rated - p().rpm_min) / p().rpm_max) * 100}%` }} />
           <div class="absolute top-0 bottom-0 right-0 bg-red-500/40" style={{ width: `${((p().rpm_max - p().rpm_rated) / p().rpm_max) * 100}%` }} />
         </div>
         <div class="flex justify-between mt-1 text-[9px] text-gray-500">

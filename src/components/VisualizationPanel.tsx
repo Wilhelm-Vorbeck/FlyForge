@@ -62,7 +62,8 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
     if (!inChart()) return;
-    const f = e.deltaY > 0 ? 0.9 : 1.1;
+    // Forward scroll = zoom IN (factor > 1), backward = zoom OUT (factor < 1)
+    const f = e.deltaY < 0 ? 1.1 : 0.9;
     setZoom(z => Math.max(0.3, Math.min(6, z * f)));
   };
 
@@ -80,7 +81,7 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
       setPanY(py => py + (e.clientY - lastY) / zoom());
       lastX = e.clientX; lastY = e.clientY;
     }
-    // Crosshair follows mouse
+    // Crosshair
     const r = svgRef.getBoundingClientRect();
     const rawX = (e.clientX - r.left) * (W / r.width);
     const rawY = (e.clientY - r.top) * (H / r.height);
@@ -108,18 +109,20 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
   const crossValX = () => xVal(mx());
   const crossValY = () => yVal(my());
 
-  const dragCursor = () => drag() ? "grabbing" : "grab";
+  // Floating label position: follow mouse but stay inside chart
+  const labelX = () => Math.min(mx() + 10, W - 160);
+  const labelY = () => Math.max(PAD + 2, my() - (12 + props.curveLabels.length * 14) - 4);
 
   return (
     <div class="w-full h-full flex flex-col min-h-0 select-none">
-      {/* Top bar: title + zoom% + reset */}
-      <div class="flex-shrink-0 flex justify-between items-center mb-1">
-        <span class="text-[9px] text-gray-500">
-          {inChart() ? `鼠标隐藏·十字运作 | ${(zoom() * 100).toFixed(0)}%` : "移入激活十字·滚轮缩放·拖拽平移"}
+      {/* Top bar: reset + zoom% */}
+      <div class="flex-shrink-0 flex justify-end items-center mb-1 space-x-2">
+        <span class="text-[9px] text-gray-500 bg-gray-800/80 px-1.5 py-0.5 rounded">
+          {(zoom() * 100).toFixed(0)}% | 滚轮缩放·拖拽
         </span>
         <button onClick={reset}
-          class="text-[9px] px-2 py-0.5 rounded bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white transition-colors">
-          ⟲ 重置视图
+          class="text-[9px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400 hover:bg-emerald-800/60 transition-colors">
+          ⟲ 重置
         </button>
       </div>
 
@@ -143,41 +146,29 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
             ))}
 
             {/* Axes */}
-            <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#475569" stroke-width="1" />
-            <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#475569" stroke-width="1" />
+            <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#334155" stroke-width="1" />
+            <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#334155" stroke-width="1" />
 
             {/* Tick labels */}
             {d()!.xTicks.map(t => (
-              <text x={sx(t)} y={H - PAD + 13} text-anchor="middle" fill="#6B7280" font-size="9">{d()!.xFormat(t)}</text>
+              <text x={sx(t)} y={H - PAD + 13} text-anchor="middle" fill="#9CA3AF" font-size="9">{d()!.xFormat(t)}</text>
             ))}
             {d()!.yTicks.map(t => (
-              <text x={PAD - 4} y={sy(t) + 3} text-anchor="end" fill="#6B7280" font-size="9">{d()!.yFormat(t)}</text>
+              <text x={PAD - 4} y={sy(t) + 3} text-anchor="end" fill="#9CA3AF" font-size="9">{d()!.yFormat(t)}</text>
             ))}
 
-            {/* Special points */}
-            {d()!.specialX.map(sp => (
-              <g>
-                <line x1={sx(sp)} y1={PAD} x2={sx(sp)} y2={H - PAD} stroke="#6366F1" stroke-width="0.5" stroke-dasharray="3 3" />
-                <text x={sx(sp)} y={PAD - 3} text-anchor="middle" fill="#818CF8" font-size="8">{d()!.xFormat(sp)}</text>
-              </g>
+            {/* Special points — dashed lines only, no text to avoid overlap */}
+            {d()!.specialX.map((sp, i) => (
+              <line x1={sx(sp)} y1={PAD} x2={sx(sp)} y2={H - PAD} stroke="#34D399" stroke-width="0.5" stroke-dasharray="3 3" />
             ))}
-            {d()!.specialY.map(sp => (
-              <g>
-                <line x1={PAD} y1={sy(sp)} x2={W - PAD} y2={sy(sp)} stroke="#6366F1" stroke-width="0.5" stroke-dasharray="3 3" />
-                <text x={PAD - 4} y={sy(sp) - 3} text-anchor="end" fill="#818CF8" font-size="8">{d()!.yFormat(sp)}</text>
-              </g>
+            {d()!.specialY.map((sp, i) => (
+              <line x1={PAD} y1={sy(sp)} x2={W - PAD} y2={sy(sp)} stroke="#34D399" stroke-width="0.5" stroke-dasharray="3 3" />
             ))}
 
             {/* Data lines */}
             {props.renderLines(sx, sy)}
 
-            {/* Crosshair ── rendered AFTER data lines for visibility */}
-            {inChart() && isInPlot() && <>
-              <line x1={mx()} y1={PAD} x2={mx()} y2={H - PAD} stroke="#F59E0B" stroke-width="0.8" stroke-dasharray="4 2" />
-              <line x1={PAD} y1={my()} x2={W - PAD} y2={my()} stroke="#F59E0B" stroke-width="0.8" stroke-dasharray="4 2" />
-            </>}
-
-            {/* Legend (bottom layer) */}
+            {/* Legend */}
             <g transform={`translate(${W - 140}, ${PAD + 4})`}>
               {props.curveLabels.map((l, i) => (
                 <g transform={`translate(0, ${i * 14})`}>
@@ -187,12 +178,18 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
               ))}
             </g>
 
-            {/* Crosshair floating box (top-right, above legend, same dark theme) */}
+            {/* Crosshair lines — after data, on top */}
             {inChart() && isInPlot() && <>
-              <rect x={W - 155} y={PAD + 4 + props.curveLabels.length * 14 + 6}
-                width="150" height={12 + props.curveLabels.length * 14}
-                rx="3" fill="#1e293b" stroke="#334155" stroke-width="0.5" />
-              <text x={W - 150} y={PAD + 4 + props.curveLabels.length * 14 + 6 + 11}
+              <line x1={mx()} y1={PAD} x2={mx()} y2={H - PAD} stroke="#F59E0B" stroke-width="0.8" stroke-dasharray="4 2" />
+              <line x1={PAD} y1={my()} x2={W - PAD} y2={my()} stroke="#F59E0B" stroke-width="0.8" stroke-dasharray="4 2" />
+            </>}
+
+            {/* Floating value box — moves with crosshair, rendered LAST (topmost) */}
+            {inChart() && isInPlot() && <>
+              <rect x={labelX()} y={labelY()} width="150"
+                height={12 + props.curveLabels.length * 14}
+                rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="0.5" />
+              <text x={labelX() + 5} y={labelY() + 11}
                 fill="#F59E0B" font-size="9">{d()!.xLabel}: {d()!.xFormat(crossValX())}</text>
               {props.renderValues(crossValX(), [crossValY()], props.curveLabels, props.curveColors)}
             </>}
@@ -332,9 +329,9 @@ const EnergyChart: Component<{ s: FlywheelSimulation }> = (props) => {
 
             return <>
               {yTicks.map(t => <line x1={BPAD} y1={sy(t)} x2={W - BPAD} y2={sy(t)} stroke="#1e293b" stroke-width="0.5" />)}
-              <line x1={BPAD} y1={BPAD} x2={BPAD} y2={BH - BPAD} stroke="#475569" stroke-width="1" />
-              <line x1={BPAD} y1={BH - BPAD} x2={W - BPAD} y2={BH - BPAD} stroke="#475569" stroke-width="1" />
-              {yTicks.map(t => <text x={BPAD - 4} y={sy(t) + 3} text-anchor="end" fill="#6B7280" font-size="9">{t.toFixed(1)} kJ</text>)}
+              <line x1={BPAD} y1={BPAD} x2={BPAD} y2={BH - BPAD} stroke="#334155" stroke-width="1" />
+              <line x1={BPAD} y1={BH - BPAD} x2={W - BPAD} y2={BH - BPAD} stroke="#334155" stroke-width="1" />
+              {yTicks.map(t => <text x={BPAD - 4} y={sy(t) + 3} text-anchor="end" fill="#9CA3AF" font-size="9">{t.toFixed(1)} kJ</text>)}
 
               {data.map((b, i) => {
                 const bx = xStart + i * (barW + gap);
@@ -363,7 +360,7 @@ const VisualizationPanel: Component = () => {
   const chartBtn = (id: "stress" | "rpm" | "energy", label: string) => (
     <button onClick={() => setActiveChart(id)}
       class={`px-2.5 py-1 text-xs rounded transition-colors ${
-        activeChart() === id ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+        activeChart() === id ? "bg-emerald-600 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"
       }`}>{label}</button>
   );
 

@@ -21,12 +21,12 @@ const PresetSelector: Component = () => {
               <button
                 onClick={() => loadPreset(preset)}
                 class={`w-full text-left px-3 py-2 rounded transition-colors ${
-                  isActive() ? "bg-blue-900/40 border border-blue-700/60" : "bg-gray-700/50 hover:bg-gray-700 border border-transparent"
+                  isActive() ? "bg-emerald-900/40 border border-emerald-700/60" : "bg-gray-700/50 hover:bg-gray-700 border border-transparent"
                 }`}
               >
                 <div class="flex items-center justify-between">
                   <p class="text-xs font-medium text-white truncate">{preset.name_zh}</p>
-                  {isActive() && <span class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded flex-shrink-0 ml-2">当前</span>}
+                  {isActive() && <span class="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded flex-shrink-0 ml-2">当前</span>}
                 </div>
                 <p class="text-[10px] text-gray-500 mt-0.5 truncate">{preset.description}</p>
               </button>

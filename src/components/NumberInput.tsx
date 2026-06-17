@@ -56,7 +56,7 @@ const NumberInput: Component<NumberInputProps> = (props) => {
             const v = parseFloat(e.currentTarget.value);
             if (!isNaN(v)) props.onChange(Math.min(Math.max(v, min), max));
           }}
-          class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+          class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
         <div class="flex flex-col ml-1">
           <button

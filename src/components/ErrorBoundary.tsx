@@ -26,7 +26,7 @@ const ErrorFallback: Component<{ error: Error; reset: () => void }> = (props) =>
         </div>
         <button
           onClick={props.reset}
-          class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
         >
           重新加载
         </button>

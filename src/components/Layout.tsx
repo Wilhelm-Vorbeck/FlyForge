@@ -49,7 +49,7 @@ const Layout: Component = () => {
           {/* Drag handle */}
           <div
             class={`h-2 flex-shrink-0 flex items-center justify-center cursor-row-resize select-none transition-colors ${
-              dragging() ? "bg-blue-600" : "bg-gray-700 hover:bg-gray-600"
+              dragging() ? "bg-emerald-600" : "bg-gray-700 hover:bg-gray-600"
             }`}
             onMouseDown={onMouseDown}
           >

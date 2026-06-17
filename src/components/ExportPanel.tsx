@@ -90,7 +90,7 @@ const ExportPanel: Component = () => {
           CSV
         </button>
         <button onClick={() => handleExport("json")} disabled={!sim()}
-          class="text-[10px] py-1 rounded bg-blue-800/40 text-blue-400 hover:bg-blue-800/60 disabled:opacity-40 transition-colors">
+          class="text-[10px] py-1 rounded bg-emerald-800/40 text-emerald-400 hover:bg-emerald-800/60 disabled:opacity-40 transition-colors">
           JSON
         </button>
         <button onClick={() => handleExport("svg")} disabled={!sim()}
@@ -103,7 +103,7 @@ const ExportPanel: Component = () => {
         </button>
       </div>
       <Show when={status()}>
-        <p class="text-[9px] text-center text-blue-400 mt-1 truncate" title={status()!}>{status()}</p>
+        <p class="text-[9px] text-center text-emerald-400 mt-1 truncate" title={status()!}>{status()}</p>
       </Show>
     </div>
   );

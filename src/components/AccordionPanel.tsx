@@ -45,7 +45,7 @@ const AccordionPanel: Component = () => {
         <select
           value={ctx.state().params.flywheel_type}
           onChange={(e) => ctx.setParams({ flywheel_type: parseInt(e.target.value) as FlywheelType })}
-          class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+          class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
         >
           {Object.entries(FlywheelTypeNames).map(([value, names]) => (
             <option value={value}>{names.zh}</option>
