@@ -22,7 +22,7 @@ function niceTicks(min: number, max: number, targetCount = 8): number[] {
 }
 
 // ============================================================
-// Shared InteractiveChart ── pan only, no zoom
+// Shared InteractiveChart — zoom + pan + cursor-as-crosshair
 // ============================================================
 const W = 800, H = 400, PAD = 50;
 
@@ -44,27 +44,27 @@ interface InteractiveChartProps {
   curveCount: number;
   curveLabels: string[];
   curveColors: string[];
-  resetId: number;
 }
 
 const InteractiveChart: Component<InteractiveChartProps> = (props) => {
+  const [zoom, setZoom] = createSignal(1);
   const [panX, setPanX] = createSignal(0);
   const [panY, setPanY] = createSignal(0);
   const [drag, setDrag] = createSignal(false);
-  const [mx, setMx] = createSignal(0);
-  const [my, setMy] = createSignal(0);
+  const [mx, setMx] = createSignal(400);
+  const [my, setMy] = createSignal(200);
   const [inChart, setInChart] = createSignal(false);
   let svgRef: SVGSVGElement | undefined;
   let lastX = 0, lastY = 0;
 
-  // Reset on data / tab change
-  let prevReset = props.resetId;
-  if (prevReset !== props.resetId) {
-    setPanX(0); setPanY(0); setMx(0); setMy(0);
-    prevReset = props.resetId;
-  }
+  const reset = () => { setZoom(1); setPanX(0); setPanY(0); };
 
-  const reset = () => { setPanX(0); setPanY(0); };
+  const onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    if (!inChart()) return;
+    const f = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(z => Math.max(0.3, Math.min(6, z * f)));
+  };
 
   const onDn = (e: MouseEvent) => {
     if (e.button !== 0) return;
@@ -73,27 +73,25 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
   };
 
   const onMv = (e: MouseEvent) => {
+    if (!svgRef) return;
     // Drag
     if (drag()) {
-      setPanX(px => px + (e.clientX - lastX));
-      setPanY(py => py + (e.clientY - lastY));
+      setPanX(px => px + (e.clientX - lastX) / zoom());
+      setPanY(py => py + (e.clientY - lastY) / zoom());
       lastX = e.clientX; lastY = e.clientY;
     }
-    // Crosshair tracking
-    if (!svgRef) return;
+    // Crosshair follows mouse
     const r = svgRef.getBoundingClientRect();
-    const rawX = e.clientX - r.left;
-    const rawY = e.clientY - r.top;
-    const scaleX = W / r.width;
-    const scaleY = H / r.height;
-    setMx(-panX() + rawX * scaleX);
-    setMy(-panY() + rawY * scaleY);
+    const rawX = (e.clientX - r.left) * (W / r.width);
+    const rawY = (e.clientY - r.top) * (H / r.height);
+    setMx(-panX() * zoom() + rawX);
+    setMy(-panY() * zoom() + rawY);
   };
 
   const onUp = () => setDrag(false);
 
   const viewBox = () =>
-    `${-panX()} ${-panY()} ${W} ${H}`;
+    `${-panX() * zoom()} ${-panY() * zoom()} ${W * zoom()} ${H * zoom()}`;
 
   const d = () => props.data();
 
@@ -109,13 +107,16 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
   const yVal = (svy: number) => d() ? d()!.yVal(svy) : 0;
   const crossValX = () => xVal(mx());
   const crossValY = () => yVal(my());
-  const crossSX = () => sx(crossValX());
-  const crossSY = () => sy(crossValY());
+
+  const dragCursor = () => drag() ? "grabbing" : "grab";
 
   return (
     <div class="w-full h-full flex flex-col min-h-0 select-none">
-      {/* Reset button */}
-      <div class="flex-shrink-0 flex justify-end mb-1">
+      {/* Top bar: title + zoom% + reset */}
+      <div class="flex-shrink-0 flex justify-between items-center mb-1">
+        <span class="text-[9px] text-gray-500">
+          {inChart() ? `鼠标隐藏·十字运作 | ${(zoom() * 100).toFixed(0)}%` : "移入激活十字·滚轮缩放·拖拽平移"}
+        </span>
         <button onClick={reset}
           class="text-[9px] px-2 py-0.5 rounded bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white transition-colors">
           ⟲ 重置视图
@@ -124,10 +125,11 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
 
       {/* Chart */}
       <div class="flex-1 min-h-0 overflow-hidden"
+        onWheel={onWheel}
         onMouseDown={onDn} onMouseMove={onMv} onMouseUp={onUp}
         onMouseEnter={() => setInChart(true)}
         onMouseLeave={() => { onUp(); setInChart(false); }}
-        style={{ cursor: drag() ? "grabbing" : "crosshair" }}>
+        style={{ cursor: inChart() ? (drag() ? "grabbing" : "none") : "crosshair" }}>
         <svg ref={svgRef} width="100%" height="100%" viewBox={viewBox()}
           preserveAspectRatio="xMidYMid meet"
           style={{ display: "block" }}>
@@ -169,16 +171,13 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
             {/* Data lines */}
             {props.renderLines(sx, sy)}
 
-            {/* Crosshair */}
+            {/* Crosshair ── rendered AFTER data lines for visibility */}
             {inChart() && isInPlot() && <>
               <line x1={mx()} y1={PAD} x2={mx()} y2={H - PAD} stroke="#F59E0B" stroke-width="0.8" stroke-dasharray="4 2" />
               <line x1={PAD} y1={my()} x2={W - PAD} y2={my()} stroke="#F59E0B" stroke-width="0.8" stroke-dasharray="4 2" />
-              <rect x={mx() + 6} y={PAD + 2} width="150" height={12 + props.curveLabels.length * 14} rx="3" fill="rgba(0,0,0,0.85)" />
-              <text x={mx() + 10} y={PAD + 13} fill="#F59E0B" font-size="9">{d()!.xLabel}: {d()!.xFormat(crossValX())}</text>
-              {props.renderValues(crossValX(), [crossValY()], props.curveLabels, props.curveColors)}
             </>}
 
-            {/* Legend */}
+            {/* Legend (bottom layer) */}
             <g transform={`translate(${W - 140}, ${PAD + 4})`}>
               {props.curveLabels.map((l, i) => (
                 <g transform={`translate(0, ${i * 14})`}>
@@ -187,6 +186,16 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
                 </g>
               ))}
             </g>
+
+            {/* Crosshair floating box (top-right, above legend, same dark theme) */}
+            {inChart() && isInPlot() && <>
+              <rect x={W - 155} y={PAD + 4 + props.curveLabels.length * 14 + 6}
+                width="150" height={12 + props.curveLabels.length * 14}
+                rx="3" fill="#1e293b" stroke="#334155" stroke-width="0.5" />
+              <text x={W - 150} y={PAD + 4 + props.curveLabels.length * 14 + 6 + 11}
+                fill="#F59E0B" font-size="9">{d()!.xLabel}: {d()!.xFormat(crossValX())}</text>
+              {props.renderValues(crossValX(), [crossValY()], props.curveLabels, props.curveColors)}
+            </>}
           </>}
         </svg>
       </div>
@@ -250,7 +259,7 @@ const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
   };
 
   return <InteractiveChart data={data} renderLines={renderLines} renderValues={renderValues}
-    curveCount={1} curveLabels={cl} curveColors={cc} resetId={0} />;
+    curveCount={1} curveLabels={cl} curveColors={cc} />;
 };
 
 // ============================================================
@@ -295,14 +304,14 @@ const RpmChart: Component<{ s: FlywheelSimulation }> = (props) => {
   };
 
   return <InteractiveChart data={data} renderLines={renderLines} renderValues={renderValues}
-    curveCount={1} curveLabels={["转速"]} curveColors={["#3B82F6"]} resetId={0} />;
+    curveCount={1} curveLabels={["转速"]} curveColors={["#3B82F6"]} />;
 };
 
 // ============================================================
 // Energy Chart (Bar chart)
 // ============================================================
 const EnergyChart: Component<{ s: FlywheelSimulation }> = (props) => {
-  const BH = 300, BPAD = 50;
+  const BH = 320, BPAD = 50;
   const bars = () => [
     { label: "额定", value: props.s.energy_rated, color: "#3B82F6" },
     { label: "最大", value: props.s.energy_max, color: "#10B981" },
@@ -311,9 +320,6 @@ const EnergyChart: Component<{ s: FlywheelSimulation }> = (props) => {
 
   return (
     <div class="w-full h-full flex flex-col min-h-0 select-none">
-      <div class="flex-shrink-0 flex justify-end mb-1">
-        <span class="text-[9px] text-gray-600">柱状图</span>
-      </div>
       <div class="flex-1 min-h-0 overflow-hidden">
         <svg width="100%" height="100%" viewBox={`0 0 ${W} ${BH}`}
           preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
@@ -322,17 +328,14 @@ const EnergyChart: Component<{ s: FlywheelSimulation }> = (props) => {
             const yRange = BH - 2 * BPAD;
             const sy = (y: number) => BH - BPAD - (y / yMax) * yRange;
             const yTicks = niceTicks(0, yMax, 5);
-            const barW = 100, gap = 50, totalW = barW * 3 + gap * 2;
-            const xStart = (W - totalW) / 2;
+            const barW = 100, gap = 50, xStart = 100;
 
             return <>
-              {/* Y grid + axis */}
               {yTicks.map(t => <line x1={BPAD} y1={sy(t)} x2={W - BPAD} y2={sy(t)} stroke="#1e293b" stroke-width="0.5" />)}
               <line x1={BPAD} y1={BPAD} x2={BPAD} y2={BH - BPAD} stroke="#475569" stroke-width="1" />
               <line x1={BPAD} y1={BH - BPAD} x2={W - BPAD} y2={BH - BPAD} stroke="#475569" stroke-width="1" />
               {yTicks.map(t => <text x={BPAD - 4} y={sy(t) + 3} text-anchor="end" fill="#6B7280" font-size="9">{t.toFixed(1)} kJ</text>)}
 
-              {/* Bars */}
               {data.map((b, i) => {
                 const bx = xStart + i * (barW + gap);
                 return <g>
@@ -385,12 +388,7 @@ const VisualizationPanel: Component = () => {
           </div>
         </div>
       }>
-        <div class="bg-gray-800 rounded p-3 border border-gray-700 flex-1 min-h-0 flex flex-col">
-          <h3 class="text-[10px] font-medium text-gray-400 mb-1 flex-shrink-0">
-            {activeChart() === "stress" && "径向应力分布（拖拽平移）"}
-            {activeChart() === "rpm" && "转速-时间曲线（拖拽平移）"}
-            {activeChart() === "energy" && "能量特性"}
-          </h3>
+        <div class="bg-gray-800 rounded p-3 pb-1.5 border border-gray-700 flex-1 min-h-0 flex flex-col">
           <div class="flex-1 min-h-0">
             {activeChart() === "stress" && <StressChart s={sim()!} />}
             {activeChart() === "rpm" && <RpmChart s={sim()!} />}
