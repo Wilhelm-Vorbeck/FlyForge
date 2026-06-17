@@ -120,9 +120,15 @@ const SectionPreview: Component = () => {
         )}
       </div>
 
-      {/* Zoom indicator */}
-      <div class="absolute bottom-2 right-2 text-[9px] text-gray-500 bg-gray-800/80 px-1.5 py-0.5 rounded">
-        {(zoom() * 100).toFixed(0)}% | 滚轮缩放·拖拽平移
+      {/* Reset + zoom indicator */}
+      <div class="absolute bottom-2 right-2 flex items-center space-x-1.5">
+        <button onClick={() => { setZoom(1); setPanX(0); setPanY(0); }}
+          class="text-[9px] px-2 py-0.5 rounded bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white transition-colors">
+          ⟲
+        </button>
+        <span class="text-[9px] text-gray-500 bg-gray-800/80 px-1.5 py-0.5 rounded">
+          {(zoom() * 100).toFixed(0)}% | 滚轮缩放·拖拽
+        </span>
       </div>
     </div>
   );
