@@ -1,66 +1,6 @@
 import { Component } from "solid-js";
 import { useAppContext } from "../../store";
-
-interface NumberInputProps {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  unit: string;
-  min?: number;
-  max?: number;
-  step?: number;
-}
-
-const NumberInput: Component<NumberInputProps> = (props) => {
-  const step = props.step ?? 1;
-  const min = props.min ?? -Infinity;
-  const max = props.max ?? Infinity;
-
-  const increment = () => {
-    const next = Math.min(props.value + step, max);
-    props.onChange(next);
-  };
-
-  const decrement = () => {
-    const next = Math.max(props.value - step, min);
-    props.onChange(next);
-  };
-
-  return (
-    <div class="flex items-center justify-between">
-      <label class="text-[10px] text-gray-400 w-12 flex-shrink-0">{props.label}</label>
-      <div class="flex items-center flex-1 ml-2">
-        <input
-          type="number"
-          value={props.value}
-          onInput={(e) => {
-            const v = parseFloat(e.target.value);
-            if (!isNaN(v)) props.onChange(Math.min(Math.max(v, min), max));
-          }}
-          min={min}
-          max={max}
-          step={step}
-          class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        <div class="flex flex-col ml-1">
-          <button
-            onClick={increment}
-            class="px-1.5 py-0 text-[9px] bg-gray-600 hover:bg-gray-500 text-gray-300 rounded-t transition-colors"
-          >
-            ▲
-          </button>
-          <button
-            onClick={decrement}
-            class="px-1.5 py-0 text-[9px] bg-gray-600 hover:bg-gray-500 text-gray-300 rounded-b transition-colors"
-          >
-            ▼
-          </button>
-        </div>
-        <span class="text-[9px] text-gray-500 w-6 ml-1">{props.unit}</span>
-      </div>
-    </div>
-  );
-};
+import NumberInput from "../NumberInput";
 
 const GeometryTab: Component = () => {
   const ctx = useAppContext();
