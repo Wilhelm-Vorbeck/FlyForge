@@ -2,6 +2,12 @@ import { createContext, useContext, createSignal, ParentComponent } from "solid-
 import { zh, Translations } from "./zh";
 import { en } from "./en";
 
+// TODO: i18n framework is ready but all components currently use hardcoded Chinese.
+// When multi-language support is needed:
+//   1. Replace hardcoded strings with t().xxx references
+//   2. Add locale toggle button in Header
+//   3. Update zh.ts / en.ts with all UI strings
+
 type Locale = "zh" | "en";
 
 interface I18nContextType {

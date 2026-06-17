@@ -348,12 +348,35 @@ pub mod materials {
         ]
     }
 
-    /// Find material by ID string
+    /// Find material by ID string (matches frontend MaterialTab IDs).
+    ///
+    /// Mapping: frontend simplified IDs → Rust material name patterns
     pub fn find_by_id(id: &str) -> Option<Material> {
-        all().into_iter().find(|m| {
-            let m_id = m.name.to_lowercase().replace(" ", "_").replace("/", "_");
-            m_id == id || id == "aisi_4340" && m.name.contains("4340")
-        })
+        let pattern = match id {
+            "aisi_4340" => Some("4340"),
+            "aluminum_7075" => Some("Aluminum 7075"),
+            "titanium_ti6al4v" => Some("Titanium Ti-6Al-4V"),
+            "carbon_fiber_t700" => Some("Carbon Fiber T700"),
+            "q235_steel" => Some("Q235 Structural"),
+            "c45_steel" => Some("C45 Carbon"),
+            "aisi_4140" => Some("AISI 4140"),
+            "maraging_18ni" => Some("18Ni Maraging"),
+            "aluminum_6061" => Some("Aluminum 6061"),
+            "ductile_iron_qt600" => Some("Ductile Iron QT600"),
+            "gray_iron_ht250" => Some("Gray Cast Iron HT250"),
+            "carbon_fiber_t1000" => Some("Carbon Fiber T1000"),
+            _ => None,
+        };
+        if let Some(pat) = pattern {
+            all().into_iter().find(|m| m.name.contains(pat))
+        } else {
+            // Fallback: generic slug match
+            let id_slug = id.to_lowercase().replace(' ', "_").replace('/', "_");
+            all().into_iter().find(|m| {
+                let m_slug = m.name.to_lowercase().replace(' ', "_").replace('/', "_");
+                m_slug.contains(&id_slug)
+            })
+        }
     }
 
     /// Get default material (AISI 4340)
