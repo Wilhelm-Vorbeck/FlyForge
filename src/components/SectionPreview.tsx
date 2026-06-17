@@ -100,6 +100,26 @@ const SectionPreview: Component = () => {
         )}
       </svg>
 
+      {/* Color legend */}
+      <div class="absolute top-2 right-2 bg-gray-800/90 border border-gray-700 rounded px-2 py-1.5 space-y-1">
+        <div class="flex items-center space-x-1.5">
+          <div class="w-3 h-0.5 bg-blue-500 rounded" />
+          <span class="text-[9px] text-gray-400">外径 Ro</span>
+        </div>
+        {p().r_i > 0 && (
+          <div class="flex items-center space-x-1.5">
+            <div class="w-3 h-0.5 bg-green-500 rounded" />
+            <span class="text-[9px] text-gray-400">内径 Ri</span>
+          </div>
+        )}
+        {p().r_hub > 0 && p().r_hub < p().r_o && (
+          <div class="flex items-center space-x-1.5">
+            <div class="w-3 h-0.5 bg-purple-500 rounded border-dashed" style={{ "border-top": "1px dashed #8B5CF6", height: "0" }} />
+            <span class="text-[9px] text-gray-400">轮毂 Hub</span>
+          </div>
+        )}
+      </div>
+
       {/* Zoom indicator */}
       <div class="absolute bottom-2 right-2 text-[9px] text-gray-500 bg-gray-800/80 px-1.5 py-0.5 rounded">
         {(zoom() * 100).toFixed(0)}% | 滚轮缩放·拖拽平移

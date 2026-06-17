@@ -2,6 +2,7 @@ use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_p
 use flyforge_core::solver::SolverRegistry;
 use flyforge_core::types::{FlywheelParams, FlywheelSimulation, Material, materials};
 use serde::{Deserialize, Serialize};
+use std::fs;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppInfo {
@@ -66,6 +67,21 @@ fn import_params(json: String) -> Result<FlywheelParams, String> {
     import_params_json(&json)
 }
 
+#[tauri::command]
+fn save_file_content(path: String, content: String) -> Result<(), String> {
+    fs::write(&path, content).map_err(|e| format!("保存文件失败: {}", e))
+}
+
+#[tauri::command]
+fn show_save_dialog(default_name: String, extension: String, filter_name: String) -> Option<String> {
+    let path = rfd::FileDialog::new()
+        .set_title("保存文件")
+        .set_file_name(&default_name)
+        .add_filter(&filter_name, &[&extension])
+        .save_file();
+    path.map(|p| p.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -78,7 +94,9 @@ pub fn run() {
             export_simulation_json,
             export_simulation_svg,
             export_params,
-            import_params
+            import_params,
+            save_file_content,
+            show_save_dialog
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

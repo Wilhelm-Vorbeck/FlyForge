@@ -8,6 +8,8 @@ import SectionPreview from "./SectionPreview";
 const Layout: Component = () => {
   const [topRatio, setTopRatio] = createSignal(50);
   const [dragging, setDragging] = createSignal(false);
+  const [leftOpen, setLeftOpen] = createSignal(true);
+  const [rightOpen, setRightOpen] = createSignal(true);
 
   let containerRef: HTMLDivElement | undefined;
 
@@ -30,10 +32,10 @@ const Layout: Component = () => {
 
   return (
     <div class="flex flex-col h-screen overflow-hidden bg-gray-900 text-white">
-      <Header />
+      <Header leftOpen={leftOpen} rightOpen={rightOpen} onToggleLeft={() => setLeftOpen(!leftOpen())} onToggleRight={() => setRightOpen(!rightOpen())} />
       <div class="flex flex-1 overflow-hidden min-h-0">
         {/* Left */}
-        <aside class="w-56 flex-shrink-0 overflow-y-auto bg-gray-800 border-r border-gray-700">
+        <aside class={`${leftOpen() ? "w-56" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-gray-800 border-r border-gray-700`}>
           <AccordionPanel />
         </aside>
 
@@ -61,8 +63,10 @@ const Layout: Component = () => {
         </div>
 
         {/* Right */}
-        <aside class="w-60 flex-shrink-0 overflow-y-auto bg-gray-800 border-l border-gray-700 p-3">
-          <ResultsPanel />
+        <aside class={`${rightOpen() ? "w-60" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-gray-800 border-l border-gray-700`}>
+          <div class="w-60 p-3">
+            <ResultsPanel />
+          </div>
         </aside>
       </div>
     </div>

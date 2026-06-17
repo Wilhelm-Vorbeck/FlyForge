@@ -1,9 +1,10 @@
-import { Component, Show, createSignal } from "solid-js";
+import { Component, Show, createSignal, createMemo } from "solid-js";
 import { useAppContext } from "../store";
+import { FlywheelSimulation } from "../types";
 
 const VisualizationPanel: Component = () => {
-  const context = useAppContext();
-  const sim = () => context.state().simulation;
+  const ctx = useAppContext();
+  const sim = () => ctx.state().simulation;
   const [activeChart, setActiveChart] = createSignal<"stress" | "rpm" | "energy">("stress");
 
   const chartBtn = (id: "stress" | "rpm" | "energy", label: string) => (
@@ -16,6 +17,113 @@ const VisualizationPanel: Component = () => {
       {label}
     </button>
   );
+
+  const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
+    const width = 600;
+    const height = 250;
+    const padding = 40;
+    const stress = () => {
+      const st = props.s.stress_rated;
+      if (!st || !st.r || st.r.length === 0) return null;
+      const maxR = Math.max(...st.r);
+      const maxStress = Math.max(...st.sigma_vm);
+      if (maxR === 0 || maxStress === 0) return null;
+      const xScale = (r: number) => padding + (r / maxR) * (width - 2 * padding);
+      const yScale = (s: number) => height - padding - (s / maxStress) * (height - 2 * padding);
+      const vmPath = st.r.map((r: number, i: number) => `${i === 0 ? "M" : "L"}${xScale(r)},${yScale(st.sigma_vm[i])}`).join(" ");
+      const hoopPath = st.r.map((r: number, i: number) => `${i === 0 ? "M" : "L"}${xScale(r)},${yScale(st.sigma_h[i])}`).join(" ");
+      const radialPath = st.r.map((r: number, i: number) => `${i === 0 ? "M" : "L"}${xScale(r)},${yScale(st.sigma_r[i])}`).join(" ");
+      return { maxR, maxStress, vmPath, hoopPath, radialPath };
+    };
+
+    return (
+      <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#374151" />
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#374151" />
+        {stress() && <>
+          <text x={padding - 5} y={padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">{stress()!.maxStress.toFixed(0)} MPa</text>
+          <text x={padding - 5} y={height - padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">0</text>
+          <text x={padding} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">0</text>
+          <text x={width - padding} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">{stress()!.maxR.toFixed(0)} mm</text>
+          <path d={stress()!.vmPath} fill="none" stroke="#EF4444" stroke-width="2" />
+          <path d={stress()!.hoopPath} fill="none" stroke="#3B82F6" stroke-width="2" />
+          <path d={stress()!.radialPath} fill="none" stroke="#10B981" stroke-width="2" />
+          <g transform={`translate(${width - 150}, ${padding})`}>
+            <line x1="0" y1="0" x2="20" y2="0" stroke="#EF4444" stroke-width="2" />
+            <text x="25" y="4" fill="#9CA3AF" font-size="10">von Mises</text>
+            <line x1="0" y1="15" x2="20" y2="15" stroke="#3B82F6" stroke-width="2" />
+            <text x="25" y="19" fill="#9CA3AF" font-size="10">周向应力</text>
+            <line x1="0" y1="30" x2="20" y2="30" stroke="#10B981" stroke-width="2" />
+            <text x="25" y="34" fill="#9CA3AF" font-size="10">径向应力</text>
+          </g>
+        </>}
+      </svg>
+    );
+  };
+
+  const RpmChart: Component<{ s: FlywheelSimulation }> = (props) => {
+    const width = 600;
+    const height = 250;
+    const padding = 40;
+    const data = () => {
+      const t = props.s.time_curve;
+      const r = props.s.rpm_curve;
+      if (!t || t.length === 0) return null;
+      const maxTime = Math.max(...t);
+      const maxRpm = Math.max(...r);
+      const minRpm = Math.min(...r);
+      const range = maxRpm - minRpm || 1;
+      const xScale = (tv: number) => padding + (tv / maxTime) * (width - 2 * padding);
+      const yScale = (rv: number) => height - padding - ((rv - minRpm) / range) * (height - 2 * padding);
+      const path = t.map((tv: number, i: number) => `${i === 0 ? "M" : "L"}${xScale(tv)},${yScale(r[i])}`).join(" ");
+      return { maxTime, maxRpm, minRpm, path };
+    };
+    return (
+      <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#374151" />
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#374151" />
+        {data() && <>
+          <text x={padding - 5} y={padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">{data()!.maxRpm.toFixed(0)} rpm</text>
+          <text x={padding - 5} y={height - padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">{data()!.minRpm.toFixed(0)} rpm</text>
+          <text x={padding} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">0 s</text>
+          <text x={width - padding} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">{data()!.maxTime.toFixed(1)} s</text>
+          <path d={data()!.path} fill="none" stroke="#3B82F6" stroke-width="2" />
+        </>}
+      </svg>
+    );
+  };
+
+  const EnergyChart: Component<{ s: FlywheelSimulation }> = (props) => {
+    const width = 600;
+    const height = 250;
+    const padding = 40;
+    const d = () => {
+      const rated = props.s.energy_rated;
+      const max = props.s.energy_max;
+      const usable = props.s.energy_usable;
+      const maxEnergy = Math.max(rated, max, usable) || 1;
+      const barWidth = 80;
+      const gap = 60;
+      const yScale = (e: number) => (e / maxEnergy) * (height - 2 * padding);
+      return { rated, max, usable, maxEnergy, barWidth, gap, yScale };
+    };
+    return (
+      <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#374151" />
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#374151" />
+        <text x={padding - 5} y={padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">{d().maxEnergy.toFixed(1)} kJ</text>
+        <rect x={padding + d().gap} y={height - padding - d().yScale(d().rated)} width={d().barWidth} height={d().yScale(d().rated)} fill="#3B82F6" rx="4" />
+        <text x={padding + d().gap + d().barWidth / 2} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">额定</text>
+        <text x={padding + d().gap + d().barWidth / 2} y={height - padding - d().yScale(d().rated) - 5} fill="#3B82F6" font-size="10" text-anchor="middle">{d().rated.toFixed(1)}</text>
+        <rect x={padding + d().gap * 2 + d().barWidth} y={height - padding - d().yScale(d().max)} width={d().barWidth} height={d().yScale(d().max)} fill="#10B981" rx="4" />
+        <text x={padding + d().gap * 2 + d().barWidth + d().barWidth / 2} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">最大</text>
+        <text x={padding + d().gap * 2 + d().barWidth + d().barWidth / 2} y={height - padding - d().yScale(d().max) - 5} fill="#10B981" font-size="10" text-anchor="middle">{d().max.toFixed(1)}</text>
+        <rect x={padding + d().gap * 3 + d().barWidth * 2} y={height - padding - d().yScale(d().usable)} width={d().barWidth} height={d().yScale(d().usable)} fill="#F59E0B" rx="4" />
+        <text x={padding + d().gap * 3 + d().barWidth * 2 + d().barWidth / 2} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">可用</text>
+        <text x={padding + d().gap * 3 + d().barWidth * 2 + d().barWidth / 2} y={height - padding - d().yScale(d().usable) - 5} fill="#F59E0B" font-size="10" text-anchor="middle">{d().usable.toFixed(1)}</text>
+      </svg>
+    );
+  };
 
   return (
     <div class="space-y-3 h-full flex flex-col">
@@ -36,293 +144,24 @@ const VisualizationPanel: Component = () => {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                 d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
             </svg>
-            <p class="text-sm">运行仿真以查看可视化</p>
+            <p class="text-sm">修改参数后自动计算</p>
           </div>
         }
       >
-        {(simulation) => (
-          <div class="space-y-4">
-            {/* Chart area */}
-            <div class="bg-gray-800 rounded p-3 border border-gray-700">
-              <h3 class="text-[10px] font-medium text-gray-400 mb-1">
-                {activeChart() === "stress" && "径向应力分布"}
-                {activeChart() === "rpm" && "转速-时间曲线"}
-                {activeChart() === "energy" && "能量特性"}
-              </h3>
-
-              {/* SVG Chart */}
-              <div class="w-full h-48">
-                {activeChart() === "stress" && <StressChart sim={simulation()} />}
-                {activeChart() === "rpm" && <RpmChart sim={simulation()} />}
-                {activeChart() === "energy" && <EnergyChart sim={simulation()} />}
-              </div>
-            </div>
-
-            {/* Flywheel section visualization */}
-            <div class="bg-gray-800 rounded p-4 border border-gray-700">
-              <h3 class="text-xs font-medium text-gray-400 mb-2">飞轮截面</h3>
-              <div class="flex items-center justify-center">
-                <FlywheelSectionViz params={context.state().params} />
-              </div>
-            </div>
+        <div class="bg-gray-800 rounded p-3 border border-gray-700 flex-1 min-h-0">
+          <h3 class="text-[10px] font-medium text-gray-400 mb-1">
+            {activeChart() === "stress" && "径向应力分布"}
+            {activeChart() === "rpm" && "转速-时间曲线"}
+            {activeChart() === "energy" && "能量特性"}
+          </h3>
+          <div class="w-full h-48 overflow-hidden">
+            {activeChart() === "stress" && <StressChart s={sim()!} />}
+            {activeChart() === "rpm" && <RpmChart s={sim()!} />}
+            {activeChart() === "energy" && <EnergyChart s={sim()!} />}
           </div>
-        )}
+        </div>
       </Show>
     </div>
-  );
-};
-
-// Stress distribution chart
-const StressChart: Component<{ sim: any }> = (props) => {
-  const stress = props.sim.stress_rated;
-  const width = 600;
-  const height = 250;
-  const padding = 40;
-
-  if (!stress || stress.r.length === 0) return <div class="text-gray-400">无数据</div>;
-
-  const maxR = Math.max(...stress.r);
-  const maxStress = Math.max(...stress.sigma_vm);
-
-  const xScale = (r: number) => padding + (r / maxR) * (width - 2 * padding);
-  const yScale = (s: number) => height - padding - (s / maxStress) * (height - 2 * padding);
-
-  const vmPath = stress.r
-    .map((r: number, i: number) => `${i === 0 ? "M" : "L"}${xScale(r)},${yScale(stress.sigma_vm[i])}`)
-    .join(" ");
-
-  const hoopPath = stress.r
-    .map((r: number, i: number) => `${i === 0 ? "M" : "L"}${xScale(r)},${yScale(stress.sigma_h[i])}`)
-    .join(" ");
-
-  const radialPath = stress.r
-    .map((r: number, i: number) => `${i === 0 ? "M" : "L"}${xScale(r)},${yScale(stress.sigma_r[i])}`)
-    .join(" ");
-
-  return (
-    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
-      {/* Grid */}
-      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#374151" />
-      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#374151" />
-
-      {/* Y-axis labels */}
-      <text x={padding - 5} y={padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">
-        {maxStress.toFixed(0)} MPa
-      </text>
-      <text x={padding - 5} y={height - padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">
-        0
-      </text>
-
-      {/* X-axis labels */}
-      <text x={padding} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">
-        0
-      </text>
-      <text x={width - padding} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">
-        {maxR.toFixed(0)} mm
-      </text>
-
-      {/* Lines */}
-      <path d={vmPath} fill="none" stroke="#EF4444" stroke-width="2" />
-      <path d={hoopPath} fill="none" stroke="#3B82F6" stroke-width="2" />
-      <path d={radialPath} fill="none" stroke="#10B981" stroke-width="2" />
-
-      {/* Legend */}
-      <g transform={`translate(${width - 150}, ${padding})`}>
-        <line x1="0" y1="0" x2="20" y2="0" stroke="#EF4444" stroke-width="2" />
-        <text x="25" y="4" fill="#9CA3AF" font-size="10">von Mises</text>
-        <line x1="0" y1="15" x2="20" y2="15" stroke="#3B82F6" stroke-width="2" />
-        <text x="25" y="19" fill="#9CA3AF" font-size="10">周向应力</text>
-        <line x1="0" y1="30" x2="20" y2="30" stroke="#10B981" stroke-width="2" />
-        <text x="25" y="34" fill="#9CA3AF" font-size="10">径向应力</text>
-      </g>
-    </svg>
-  );
-};
-
-// RPM-time curve chart
-const RpmChart: Component<{ sim: any }> = (props) => {
-  const width = 600;
-  const height = 250;
-  const padding = 40;
-
-  const time = props.sim.time_curve;
-  const rpm = props.sim.rpm_curve;
-
-  if (!time || time.length === 0) return <div class="text-gray-400">无数据</div>;
-
-  const maxTime = Math.max(...time);
-  const maxRpm = Math.max(...rpm);
-  const minRpm = Math.min(...rpm);
-
-  const xScale = (t: number) => padding + (t / maxTime) * (width - 2 * padding);
-  const yScale = (r: number) => height - padding - ((r - minRpm) / (maxRpm - minRpm)) * (height - 2 * padding);
-
-  const path = time
-    .map((t: number, i: number) => `${i === 0 ? "M" : "L"}${xScale(t)},${yScale(rpm[i])}`)
-    .join(" ");
-
-  return (
-    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
-      {/* Grid */}
-      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#374151" />
-      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#374151" />
-
-      {/* Y-axis labels */}
-      <text x={padding - 5} y={padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">
-        {maxRpm.toFixed(0)} rpm
-      </text>
-      <text x={padding - 5} y={height - padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">
-        {minRpm.toFixed(0)} rpm
-      </text>
-
-      {/* X-axis labels */}
-      <text x={padding} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">
-        0 s
-      </text>
-      <text x={width - padding} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">
-        {maxTime.toFixed(1)} s
-      </text>
-
-      {/* Line */}
-      <path d={path} fill="none" stroke="#3B82F6" stroke-width="2" />
-    </svg>
-  );
-};
-
-// Energy distribution chart (simple bar chart)
-const EnergyChart: Component<{ sim: any }> = (props) => {
-  const sim = props.sim;
-  const width = 600;
-  const height = 250;
-  const padding = 40;
-
-  const maxEnergy = Math.max(sim.energy_rated, sim.energy_max, sim.energy_usable);
-  const barWidth = 80;
-  const gap = 60;
-
-  const yScale = (e: number) => (e / maxEnergy) * (height - 2 * padding);
-
-  return (
-    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
-      {/* Grid */}
-      <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#374151" />
-      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#374151" />
-
-      {/* Y-axis label */}
-      <text x={padding - 5} y={padding + 5} fill="#9CA3AF" font-size="10" text-anchor="end">
-        {maxEnergy.toFixed(1)} kJ
-      </text>
-
-      {/* Rated Energy */}
-      <rect
-        x={padding + gap}
-        y={height - padding - yScale(sim.energy_rated)}
-        width={barWidth}
-        height={yScale(sim.energy_rated)}
-        fill="#3B82F6"
-        rx="4"
-      />
-      <text x={padding + gap + barWidth / 2} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">
-        额定
-      </text>
-      <text x={padding + gap + barWidth / 2} y={height - padding - yScale(sim.energy_rated) - 5} fill="#3B82F6" font-size="10" text-anchor="middle">
-        {sim.energy_rated.toFixed(1)}
-      </text>
-
-      {/* Max Energy */}
-      <rect
-        x={padding + gap * 2 + barWidth}
-        y={height - padding - yScale(sim.energy_max)}
-        width={barWidth}
-        height={yScale(sim.energy_max)}
-        fill="#10B981"
-        rx="4"
-      />
-      <text x={padding + gap * 2 + barWidth + barWidth / 2} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">
-        最大
-      </text>
-      <text x={padding + gap * 2 + barWidth + barWidth / 2} y={height - padding - yScale(sim.energy_max) - 5} fill="#10B981" font-size="10" text-anchor="middle">
-        {sim.energy_max.toFixed(1)}
-      </text>
-
-      {/* Usable Energy */}
-      <rect
-        x={padding + gap * 3 + barWidth * 2}
-        y={height - padding - yScale(sim.energy_usable)}
-        width={barWidth}
-        height={yScale(sim.energy_usable)}
-        fill="#F59E0B"
-        rx="4"
-      />
-      <text x={padding + gap * 3 + barWidth * 2 + barWidth / 2} y={height - padding + 15} fill="#9CA3AF" font-size="10" text-anchor="middle">
-        可用
-      </text>
-      <text x={padding + gap * 3 + barWidth * 2 + barWidth / 2} y={height - padding - yScale(sim.energy_usable) - 5} fill="#F59E0B" font-size="10" text-anchor="middle">
-        {sim.energy_usable.toFixed(1)}
-      </text>
-    </svg>
-  );
-};
-
-// Flywheel section visualization
-const FlywheelSectionViz: Component<{ params: any }> = (props) => {
-  const p = props.params;
-  const maxR = p.r_o;
-  const scale = 100 / maxR;
-
-  return (
-    <svg width="240" height="240" viewBox="0 0 240 240">
-      {/* Outer circle */}
-      <circle
-        cx="120"
-        cy="120"
-        r={p.r_o * scale}
-        fill="none"
-        stroke="#3B82F6"
-        stroke-width="2"
-      />
-      {/* Inner circle (if has bore) */}
-      {p.r_i > 0 && (
-        <circle
-          cx="120"
-          cy="120"
-          r={p.r_i * scale}
-          fill="none"
-          stroke="#10B981"
-          stroke-width="2"
-        />
-      )}
-      {/* Hub circle */}
-      {p.r_hub > 0 && p.r_hub < p.r_o && (
-        <circle
-          cx="120"
-          cy="120"
-          r={p.r_hub * scale}
-          fill="none"
-          stroke="#8B5CF6"
-          stroke-width="1"
-          stroke-dasharray="4 4"
-        />
-      )}
-      {/* Center point */}
-      <circle cx="120" cy="120" r="3" fill="#9CA3AF" />
-      {/* Crosshair */}
-      <line x1="20" y1="120" x2="220" y2="120" stroke="#374151" stroke-width="0.5" />
-      <line x1="120" y1="20" x2="120" y2="220" stroke="#374151" stroke-width="0.5" />
-      {/* Dimension line */}
-      <line x1="120" y1="120" x2={120 + p.r_o * scale} y2="120" stroke="#EF4444" stroke-width="1" />
-      <text x={120 + p.r_o * scale / 2} y="115" fill="#EF4444" font-size="10" text-anchor="middle">
-        R_o = {p.r_o} mm
-      </text>
-      {p.r_i > 0 && (
-        <>
-          <line x1="120" y1="120" x2={120 + p.r_i * scale} y2="120" stroke="#10B981" stroke-width="1" />
-          <text x={120 + p.r_i * scale / 2} y="130" fill="#10B981" font-size="10" text-anchor="middle">
-            R_i = {p.r_i} mm
-          </text>
-        </>
-      )}
-    </svg>
   );
 };
 
