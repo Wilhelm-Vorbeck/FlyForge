@@ -40,7 +40,7 @@ interface ChartData {
 interface InteractiveChartProps {
   data: () => ChartData | null;
   renderLines: (sx: (x: number) => number, sy: (y: number) => number) => any;
-  renderValues: (x: number, y: number[], labels: string[], colors: string[]) => any;
+  renderValues: (ox: number, oy: number, x: number, labels: string[], colors: string[]) => any;
   curveCount: number;
   curveLabels: string[];
   curveColors: string[];
@@ -62,8 +62,8 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
     if (!inChart()) return;
-    // Forward scroll = zoom IN (factor > 1), backward = zoom OUT (factor < 1)
-    const f = e.deltaY < 0 ? 1.1 : 0.9;
+    // Forward scroll (deltaY < 0) = zoom OUT, backward = zoom IN
+    const f = e.deltaY < 0 ? 0.9 : 1.1;
     setZoom(z => Math.max(0.3, Math.min(6, z * f)));
   };
 
@@ -157,12 +157,18 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
               <text x={PAD - 4} y={sy(t) + 3} text-anchor="end" fill="#9CA3AF" font-size="9">{d()!.yFormat(t)}</text>
             ))}
 
-            {/* Special points — dashed lines only, no text to avoid overlap */}
+            {/* Special points — dashed lines + offset text labels */}
             {d()!.specialX.map((sp, i) => (
-              <line x1={sx(sp)} y1={PAD} x2={sx(sp)} y2={H - PAD} stroke="#34D399" stroke-width="0.5" stroke-dasharray="3 3" />
+              <g>
+                <line x1={sx(sp)} y1={PAD} x2={sx(sp)} y2={H - PAD} stroke="#34D399" stroke-width="0.5" stroke-dasharray="3 3" />
+                <text x={sx(sp)} y={PAD - 4} text-anchor="middle" fill="#34D399" font-size="8">{d()!.xFormat(sp)}</text>
+              </g>
             ))}
             {d()!.specialY.map((sp, i) => (
-              <line x1={PAD} y1={sy(sp)} x2={W - PAD} y2={sy(sp)} stroke="#34D399" stroke-width="0.5" stroke-dasharray="3 3" />
+              <g>
+                <line x1={PAD} y1={sy(sp)} x2={W - PAD} y2={sy(sp)} stroke="#34D399" stroke-width="0.5" stroke-dasharray="3 3" />
+                <text x={W - PAD + 4} y={sy(sp) + 3} text-anchor="start" fill="#34D399" font-size="8">{d()!.yFormat(sp)}</text>
+              </g>
             ))}
 
             {/* Data lines */}
@@ -191,7 +197,7 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
                 rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="0.5" />
               <text x={labelX() + 5} y={labelY() + 11}
                 fill="#F59E0B" font-size="9">{d()!.xLabel}: {d()!.xFormat(crossValX())}</text>
-              {props.renderValues(crossValX(), [crossValY()], props.curveLabels, props.curveColors)}
+              {props.renderValues(labelX() + 5, labelY() + 11, crossValX(), props.curveLabels, props.curveColors)}
             </>}
           </>}
         </svg>
@@ -240,7 +246,7 @@ const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
     ));
   };
 
-  const renderValues = (x: number, _y: number[], labels: string[], colors: string[]) => {
+  const renderValues = (ox: number, oy: number, x: number, labels: string[], colors: string[]) => {
     const st = props.s.stress_rated;
     if (!st) return null;
     const interp = (arr: number[]) => {
@@ -251,7 +257,7 @@ const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
     };
     return [st.sigma_vm, st.sigma_h, st.sigma_r].map((arr, i) => {
       const v = interp(arr);
-      return <text x="-144" y={16 + i * 14} fill={cc[i]} font-size="9">{labels[i]}: {v.toFixed(1)} MPa</text>;
+      return <text x={ox} y={oy + (i + 1) * 14} fill={cc[i]} font-size="9">{labels[i]}: {v.toFixed(1)} MPa</text>;
     });
   };
 
@@ -289,7 +295,7 @@ const RpmChart: Component<{ s: FlywheelSimulation }> = (props) => {
       fill="none" stroke="#3B82F6" stroke-width="1.5" />;
   };
 
-  const renderValues = (x: number, _y: number[], _l: string[], _c: string[]) => {
+  const renderValues = (ox: number, oy: number, x: number, _l: string[], _c: string[]) => {
     const t = props.s.time_curve, r = props.s.rpm_curve;
     const interp = () => {
       if (x <= t[0]) return r[0];
@@ -297,7 +303,7 @@ const RpmChart: Component<{ s: FlywheelSimulation }> = (props) => {
         if (x <= t[i]) { const f = (x - t[i - 1]) / (t[i] - t[i - 1]); return r[i - 1] + f * (r[i] - r[i - 1]); }
       return r[r.length - 1];
     };
-    return <text x="-144" y={16} fill="#3B82F6" font-size="9">转速: {interp().toFixed(0)} rpm</text>;
+    return <text x={ox} y={oy + 14} fill="#3B82F6" font-size="9">转速: {interp().toFixed(0)} rpm</text>;
   };
 
   return <InteractiveChart data={data} renderLines={renderLines} renderValues={renderValues}

@@ -14,7 +14,7 @@ const SectionPreview: Component = () => {
 
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const delta = e.deltaY > 0 ? 1.1 : 0.9;
     setZoom(z => Math.max(0.2, Math.min(5, z * delta)));
   };
 
@@ -103,7 +103,7 @@ const SectionPreview: Component = () => {
       {/* Color legend */}
       <div class="absolute top-2 right-2 bg-gray-800/90 border border-gray-700 rounded px-2 py-1.5 space-y-1">
         <div class="flex items-center space-x-1.5">
-          <div class="w-3 h-0.5 bg-emerald-500 rounded" />
+          <div class="w-3 h-0.5 bg-blue-500 rounded" />
           <span class="text-[9px] text-gray-400">外径 Ro</span>
         </div>
         {p().r_i > 0 && (
