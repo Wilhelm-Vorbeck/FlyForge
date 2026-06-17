@@ -40,7 +40,7 @@ const Layout: Component = () => {
         {/* Center: Resizable top/bottom */}
         <div ref={containerRef} class="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Top: Preview */}
-          <div class="overflow-hidden bg-gray-900 p-2" style={{ height: `${topRatio()}%` }}>
+          <div class="overflow-hidden bg-gray-900 p-2 relative" style={{ height: `${topRatio()}%` }}>
             <SectionPreview />
           </div>
 

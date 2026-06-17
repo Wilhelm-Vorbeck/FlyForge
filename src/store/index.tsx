@@ -7,6 +7,7 @@ interface AppState {
   simulation: FlywheelSimulation | null;
   isLoading: boolean;
   error: string | null;
+  activePresetName: string | null;
 }
 
 // Context type
@@ -16,6 +17,7 @@ interface AppContextType {
   setSimulation: (sim: FlywheelSimulation | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setActivePreset: (name: string | null) => void;
   resetParams: () => void;
 }
 
@@ -46,22 +48,29 @@ export const AppProvider: ParentComponent = (props) => {
   const [simulation, setSimulation] = createSignal<FlywheelSimulation | null>(null);
   const [isLoading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [activePresetName, setActivePresetName] = createSignal<string | null>(null);
 
   const state = (): AppState => ({
     params: params(),
     simulation: simulation(),
     isLoading: isLoading(),
     error: error(),
+    activePresetName: activePresetName(),
   });
 
   const setParams = (newParams: Partial<FlywheelParams>) => {
     setParamsSignal((prev) => ({ ...prev, ...newParams }));
   };
 
+  const setActivePreset = (name: string | null) => {
+    setActivePresetName(name);
+  };
+
   const resetParams = () => {
     setParamsSignal({ ...DEFAULT_PARAMS });
     setSimulation(null);
     setError(null);
+    setActivePresetName(null);
   };
 
   const contextValue: AppContextType = {
@@ -70,6 +79,7 @@ export const AppProvider: ParentComponent = (props) => {
     setSimulation,
     setLoading,
     setError,
+    setActivePreset,
     resetParams,
   };
 

@@ -27,8 +27,8 @@ const ResultsPanel: Component = () => {
     <div class="space-y-3">
       <h3 class="text-xs font-semibold text-gray-400">计算结果</h3>
 
-      {/* Loading indicator */}
-      <Show when={ctx.state().isLoading}>
+      {/* Loading indicator - only when no error */}
+      <Show when={ctx.state().isLoading && !ctx.state().error}>
         <div class="flex items-center space-x-2 text-blue-400">
           <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -38,8 +38,8 @@ const ResultsPanel: Component = () => {
         </div>
       </Show>
 
-      {/* Error */}
-      <Show when={ctx.state().error}>
+      {/* Error - only when not loading */}
+      <Show when={ctx.state().error && !ctx.state().isLoading}>
         <div class="bg-red-900/20 border border-red-800/50 rounded px-2 py-1.5">
           <p class="text-[10px] text-red-400">{ctx.state().error}</p>
         </div>

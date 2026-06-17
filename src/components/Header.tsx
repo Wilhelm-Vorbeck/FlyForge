@@ -18,7 +18,13 @@ const Header: Component = () => {
       </div>
 
       <div class="flex items-center space-x-3">
-        <Show when={ctx.state().isLoading}>
+        {/* Error takes priority over loading */}
+        <Show when={ctx.state().error && !ctx.state().isLoading}>
+          <span class="text-[10px] text-red-400 truncate max-w-[300px]" title={ctx.state().error!}>
+            ⚠ {ctx.state().error}
+          </span>
+        </Show>
+        <Show when={ctx.state().isLoading && !ctx.state().error}>
           <span class="text-[10px] text-blue-400 flex items-center space-x-1">
             <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -26,9 +32,6 @@ const Header: Component = () => {
             </svg>
             <span>计算中</span>
           </span>
-        </Show>
-        <Show when={ctx.state().error}>
-          <span class="text-[10px] text-red-400 truncate max-w-[200px]">⚠ {ctx.state().error}</span>
         </Show>
         <button onClick={ctx.resetParams} class="text-[10px] text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-700 transition-colors">
           重置

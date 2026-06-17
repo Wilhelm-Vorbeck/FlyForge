@@ -1,13 +1,12 @@
-import { Component, For, createSignal } from "solid-js";
+import { Component, For } from "solid-js";
 import { useAppContext } from "../store";
 import { PRESETS, Preset } from "../presets";
 
 const PresetSelector: Component = () => {
   const ctx = useAppContext();
-  const [activeId, setActiveId] = createSignal<string | null>(null);
 
   const loadPreset = (preset: Preset) => {
-    setActiveId(preset.name);
+    ctx.setActivePreset(preset.name);
     ctx.setParams(preset.params);
   };
 
@@ -17,7 +16,7 @@ const PresetSelector: Component = () => {
       <div class="space-y-1.5 max-h-[calc(100vh-300px)] overflow-auto">
         <For each={PRESETS}>
           {(preset) => {
-            const isActive = () => activeId() === preset.name;
+            const isActive = () => ctx.state().activePresetName === preset.name;
             return (
               <button
                 onClick={() => loadPreset(preset)}

@@ -6,6 +6,7 @@
 //! Reference: CamForge types.rs pattern, but with flywheel domain model.
 
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 // ============================================================
 // Flywheel Type Enum
@@ -14,7 +15,8 @@ use serde::{Deserialize, Serialize};
 /// Flywheel geometry type.
 /// Different section shapes have different stress distribution formulas.
 /// Serialized as integer (consistent with frontend TypeScript enum).
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
 pub enum FlywheelType {
     /// Solid disk - simplest, for low-speed scenarios
     #[default]
