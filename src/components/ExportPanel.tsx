@@ -86,19 +86,19 @@ const ExportPanel: Component = () => {
       </div>
       <div class="grid grid-cols-2 gap-1">
         <button onClick={() => handleExport("csv")} disabled={!sim()}
-          class="text-[10px] py-1 rounded bg-green-800/40 text-green-400 hover:bg-green-800/60 disabled:opacity-40 transition-colors">
+          class="text-[10px] py-1 rounded bg-[#0f2a1a]/60 text-emerald-400 hover:bg-[#0f2a1a]/80 disabled:opacity-40 transition-colors border border-[#1a4a2e]">
           CSV
         </button>
         <button onClick={() => handleExport("json")} disabled={!sim()}
-          class="text-[10px] py-1 rounded bg-emerald-800/40 text-emerald-400 hover:bg-emerald-800/60 disabled:opacity-40 transition-colors">
+          class="text-[10px] py-1 rounded bg-[#0f2a1a]/60 text-emerald-400 hover:bg-[#0f2a1a]/80 disabled:opacity-40 transition-colors border border-[#1a4a2e]">
           JSON
         </button>
         <button onClick={() => handleExport("svg")} disabled={!sim()}
-          class="text-[10px] py-1 rounded bg-purple-800/40 text-purple-400 hover:bg-purple-800/60 disabled:opacity-40 transition-colors">
+          class="text-[10px] py-1 rounded bg-[#1a0f2a]/60 text-purple-400 hover:bg-[#1a0f2a]/80 disabled:opacity-40 transition-colors border border-[#2a1a4a]">
           SVG
         </button>
         <button onClick={() => handleExport("params")}
-          class="text-[10px] py-1 rounded bg-yellow-800/40 text-yellow-400 hover:bg-yellow-800/60 transition-colors">
+          class="text-[10px] py-1 rounded bg-[#2a220a]/60 text-yellow-400 hover:bg-[#2a220a]/80 transition-colors border border-[#4a3a1a]">
           参数
         </button>
       </div>

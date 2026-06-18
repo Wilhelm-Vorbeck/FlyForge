@@ -21,7 +21,7 @@ const PresetSelector: Component = () => {
               <button
                 onClick={() => loadPreset(preset)}
                 class={`w-full text-left px-3 py-2 rounded transition-colors ${
-                  isActive() ? "bg-emerald-900/40 border border-emerald-700/60" : "bg-gray-700/50 hover:bg-gray-700 border border-transparent"
+                  isActive() ? "bg-emerald-900/40 border border-emerald-700/60" : "bg-[#111a22]/60 hover:bg-[#1a2e22] border border-transparent"
                 }`}
               >
                 <div class="flex items-center justify-between">

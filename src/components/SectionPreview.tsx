@@ -57,7 +57,7 @@ const SectionPreview: Component = () => {
       onMouseLeave={onMouseUp}
       style={{ cursor: dragging() ? "grabbing" : "grab" }}
     >
-      <svg width="100%" height="100%" viewBox={vb()} class="bg-gray-900/80 rounded"
+      <svg width="100%" height="100%" viewBox={vb()} class="bg-[#0a0f14] rounded"
         style={{ "min-height": "180px" }}>
         <defs>
           <pattern id="smallGrid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse">
@@ -101,7 +101,7 @@ const SectionPreview: Component = () => {
       </svg>
 
       {/* Color legend */}
-      <div class="absolute top-2 right-2 bg-gray-800/90 border border-gray-700 rounded px-2 py-1.5 space-y-1">
+      <div class="absolute top-2 right-2 bg-[#0d1419]/90 border border-[#1a2e22] rounded px-2 py-1.5 space-y-1">
         <div class="flex items-center space-x-1.5">
           <div class="w-3 h-0.5 bg-blue-500 rounded" />
           <span class="text-[9px] text-gray-400">外径 Ro</span>
@@ -123,10 +123,10 @@ const SectionPreview: Component = () => {
       {/* Reset + zoom indicator */}
       <div class="absolute bottom-2 right-2 flex items-center space-x-1.5">
         <button onClick={() => { setZoom(1); setPanX(0); setPanY(0); }}
-          class="text-[9px] px-2 py-0.5 rounded bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white transition-colors">
+          class="text-[9px] px-2 py-0.5 rounded bg-[#1a2e22] text-emerald-400 hover:bg-[#2a4a32] hover:text-white transition-colors">
           ⟲
         </button>
-        <span class="text-[9px] text-gray-500 bg-gray-800/80 px-1.5 py-0.5 rounded">
+        <span class="text-[9px] text-gray-500 bg-[#0d1419]/80 px-1.5 py-0.5 rounded">
           {(zoom() * 100).toFixed(0)}% | 滚轮缩放·拖拽
         </span>
       </div>

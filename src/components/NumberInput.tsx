@@ -56,14 +56,14 @@ const NumberInput: Component<NumberInputProps> = (props) => {
             const v = parseFloat(e.currentTarget.value);
             if (!isNaN(v)) props.onChange(Math.min(Math.max(v, min), max));
           }}
-          class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          class="w-16 bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
         <div class="flex flex-col ml-1">
           <button
             onMouseDown={(e) => { e.preventDefault(); startRepeat(step); }}
             onMouseUp={stopRepeat}
             onMouseLeave={stopRepeat}
-            class="px-1.5 py-0 text-[9px] bg-gray-600 hover:bg-gray-500 text-gray-300 rounded-t select-none transition-colors"
+            class="px-1.5 py-0 text-[9px] bg-[#1a2e22] hover:bg-[#2a4a32] text-emerald-300 rounded-t select-none transition-colors"
           >
             ▲
           </button>
@@ -71,7 +71,7 @@ const NumberInput: Component<NumberInputProps> = (props) => {
             onMouseDown={(e) => { e.preventDefault(); startRepeat(-step); }}
             onMouseUp={stopRepeat}
             onMouseLeave={stopRepeat}
-            class="px-1.5 py-0 text-[9px] bg-gray-600 hover:bg-gray-500 text-gray-300 rounded-b select-none transition-colors"
+            class="px-1.5 py-0 text-[9px] bg-[#1a2e22] hover:bg-[#2a4a32] text-emerald-300 rounded-b select-none transition-colors"
           >
             ▼
           </button>

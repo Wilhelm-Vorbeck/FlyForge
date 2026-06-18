@@ -12,7 +12,7 @@ const Header: Component<HeaderProps> = (props) => {
   const ctx = useAppContext();
 
   return (
-    <header class="bg-gray-800 border-b border-gray-700 px-4 py-2 flex items-center justify-between flex-shrink-0">
+    <header class="bg-[#0a0f14] border-b border-[#1a2e22] px-4 py-2 flex items-center justify-between flex-shrink-0">
       <div class="flex items-center space-x-2">
         {/* Toggle left sidebar */}
         <button onClick={props.onToggleLeft} class={`p-1.5 rounded transition-colors ${props.leftOpen() ? "text-emerald-400 hover:bg-gray-700" : "text-gray-500 hover:bg-gray-700"}`} title="切换参数面板">

@@ -40,12 +40,12 @@ const AccordionPanel: Component = () => {
   return (
     <div class="flex flex-col h-full">
       {/* Flywheel type */}
-      <div class="px-3 py-2 border-b border-gray-700">
+      <div class="px-3 py-2 border-b border-[#1a2e22]">
         <label class="text-[10px] text-gray-500 block mb-1">飞轮类型</label>
         <select
           value={ctx.state().params.flywheel_type}
           onChange={(e) => ctx.setParams({ flywheel_type: parseInt(e.target.value) as FlywheelType })}
-          class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
         >
           {Object.entries(FlywheelTypeNames).map(([value, names]) => (
             <option value={value}>{names.zh}</option>
@@ -57,10 +57,10 @@ const AccordionPanel: Component = () => {
       <div class="flex-1 overflow-y-auto">
         <For each={SECTIONS}>
           {(section) => (
-            <div class="border-b border-gray-700">
+            <div class="border-b border-[#1a2e22]">
               <button
                 onClick={() => toggle(section.id)}
-                class="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
+                class="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-400 hover:text-white hover:bg-[#111a22]/60 transition-colors"
               >
                 <span>{section.title}</span>
                 <svg
@@ -71,7 +71,7 @@ const AccordionPanel: Component = () => {
                 </svg>
               </button>
               {openSections().has(section.id) && (
-                <div class="px-3 py-2 bg-gray-800/50">
+                <div class="px-3 py-2 bg-[#0d1419]/60">
                   {section.id === "geometry" && <GeometryTab />}
                   {section.id === "material" && <MaterialTab />}
                   {section.id === "operating" && <OperatingTab />}

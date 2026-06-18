@@ -117,11 +117,11 @@ const InteractiveChart: Component<InteractiveChartProps> = (props) => {
     <div class="w-full h-full flex flex-col min-h-0 select-none">
       {/* Top bar: reset + zoom% */}
       <div class="flex-shrink-0 flex justify-end items-center mb-1 space-x-2">
-        <span class="text-[9px] text-gray-500 bg-gray-800/80 px-1.5 py-0.5 rounded">
+        <span class="text-[9px] text-gray-500 bg-[#0d1419]/80 px-1.5 py-0.5 rounded">
           {(zoom() * 100).toFixed(0)}% | 滚轮缩放·拖拽
         </span>
         <button onClick={reset}
-          class="text-[9px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400 hover:bg-emerald-800/60 transition-colors">
+          class="text-[9px] px-2 py-0.5 rounded bg-[#1a2e22] text-emerald-400 hover:bg-[#2a4a32] transition-colors">
           ⟲ 重置
         </button>
       </div>
@@ -391,7 +391,7 @@ const VisualizationPanel: Component = () => {
           </div>
         </div>
       }>
-        <div class="bg-gray-800 rounded p-3 pb-1.5 border border-gray-700 flex-1 min-h-0 flex flex-col">
+        <div class="bg-[#0d1419] rounded p-3 pb-1.5 border border-[#1a2e22] flex-1 min-h-0 flex flex-col">
           <div class="flex-1 min-h-0">
             {activeChart() === "stress" && <StressChart s={sim()!} />}
             {activeChart() === "rpm" && <RpmChart s={sim()!} />}

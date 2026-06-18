@@ -10,7 +10,7 @@ interface MiniCardProps {
 }
 
 const MiniCard: Component<MiniCardProps> = (props) => (
-  <div class={`border rounded px-2 py-1.5 ${props.warn ? "bg-red-900/20 border-red-800/50" : "bg-gray-700/50 border-gray-700"}`}>
+  <div class={`border rounded px-2 py-1.5 ${props.warn ? "bg-red-900/20 border-red-800/50" : "bg-[#111a22]/60 border-[#1a2e22]"}`}>
     <p class="text-[10px] text-gray-500 truncate leading-none mb-0.5">{props.label}</p>
     <p class="text-xs font-bold text-white leading-none">
       {props.value}
@@ -87,7 +87,7 @@ const ResultsPanel: Component = () => {
 
             {/* Status */}
             <div class={`rounded px-2 py-1.5 flex items-center space-x-1.5 ${
-              s().safety_passed ? "bg-green-900/20 border border-green-800/50" : "bg-red-900/20 border border-red-800/50"
+              s().safety_passed ? "bg-[#0f2a1a]/60 border border-[#1a4a2e]" : "bg-red-900/20 border border-red-800/50"
             }`}>
               <div class={`w-2 h-2 rounded-full ${s().safety_passed ? "bg-green-500" : "bg-red-500"}`} />
               <span class={`text-[10px] font-medium ${s().safety_passed ? "text-green-400" : "text-red-400"}`}>

@@ -30,7 +30,7 @@ const MaterialTab: Component = () => {
       <select
         value={ctx.state().params.material_id}
         onChange={(e) => ctx.setParams({ material_id: e.target.value })}
-        class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
       >
         <For each={MATERIALS}>
           {(m) => <option value={m.id}>{m.name_zh}</option>}
@@ -39,17 +39,17 @@ const MaterialTab: Component = () => {
 
       {/* Compact properties */}
       <div class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-gray-700/50 rounded px-2 py-1.5">
+        <div class="bg-[#111a22]/60 rounded px-2 py-1.5 border border-[#1a2e22]">
           <p class="text-[10px] text-gray-500">密度</p>
           <p class="text-xs text-white font-mono">{current().density}</p>
           <p class="text-[10px] text-gray-500">kg/m³</p>
         </div>
-        <div class="bg-gray-700/50 rounded px-2 py-1.5">
+        <div class="bg-[#111a22]/60 rounded px-2 py-1.5 border border-[#1a2e22]">
           <p class="text-[10px] text-gray-500">屈服强度</p>
           <p class="text-xs text-white font-mono">{current().yield_strength}</p>
           <p class="text-[10px] text-gray-500">MPa</p>
         </div>
-        <div class="bg-gray-700/50 rounded px-2 py-1.5">
+        <div class="bg-[#111a22]/60 rounded px-2 py-1.5 border border-[#1a2e22]">
           <p class="text-[10px] text-gray-500">比强度</p>
           <p class="text-xs text-white font-mono">{(current().yield_strength / current().density * 1000).toFixed(0)}</p>
           <p class="text-[10px] text-gray-500">kN·m/kg</p>
@@ -62,7 +62,7 @@ const MaterialTab: Component = () => {
           {(m) => (
             <div class="flex items-center">
               <span class="text-[10px] text-gray-500 w-14 truncate">{m.name_zh.slice(0, 5)}</span>
-              <div class="flex-1 mx-1 h-1.5 bg-gray-600 rounded-full overflow-hidden">
+              <div class="flex-1 mx-1 h-1.5 bg-[#1a2e22] rounded-full overflow-hidden">
                 <div
                   class="h-full rounded-full transition-all"
                   style={{

@@ -31,18 +31,18 @@ const Layout: Component = () => {
   };
 
   return (
-    <div class="flex flex-col h-screen overflow-hidden bg-gray-900 text-white">
+    <div class="flex flex-col h-screen overflow-hidden bg-[#0a0f14] text-white">
       <Header leftOpen={leftOpen} rightOpen={rightOpen} onToggleLeft={() => setLeftOpen(!leftOpen())} onToggleRight={() => setRightOpen(!rightOpen())} />
       <div class="flex flex-1 overflow-hidden min-h-0">
         {/* Left */}
-        <aside class={`${leftOpen() ? "w-56" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-gray-800 border-r border-gray-700`}>
+        <aside class={`${leftOpen() ? "w-56" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-r border-[#1a2e22]`}>
           <AccordionPanel />
         </aside>
 
         {/* Center: Resizable top/bottom */}
         <div ref={containerRef} class="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Top: Preview */}
-          <div class="overflow-hidden bg-gray-900 p-2 relative" style={{ height: `${topRatio()}%` }}>
+          <div class="overflow-hidden bg-[#0a0f14] p-2 relative" style={{ height: `${topRatio()}%` }}>
             <SectionPreview />
           </div>
 
@@ -57,13 +57,13 @@ const Layout: Component = () => {
           </div>
 
           {/* Bottom: Charts */}
-          <div class="overflow-auto bg-gray-900 p-2" style={{ height: `${100 - topRatio()}%` }}>
+          <div class="overflow-auto bg-[#0a0f14] p-2" style={{ height: `${100 - topRatio()}%` }}>
             <VisualizationPanel />
           </div>
         </div>
 
         {/* Right */}
-        <aside class={`${rightOpen() ? "w-60" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-gray-800 border-l border-gray-700`}>
+        <aside class={`${rightOpen() ? "w-60" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-l border-[#1a2e22]`}>
           <div class="w-60 p-3">
             <ResultsPanel />
           </div>
