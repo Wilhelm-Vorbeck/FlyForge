@@ -214,7 +214,9 @@ const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
     const st = props.s.stress_rated;
     if (!st || !st.r || st.r.length === 0) return null;
     const xMin = 0, xMax = Math.max(...st.r);
-    const yMax = Math.max(...st.sigma_vm, props.s.material.yield_strength) * 1.15 || 1, yMin = 0;
+    const dataMax = Math.max(...st.sigma_vm) || 1;
+    // Scale to data range; yield line is drawn separately if it exceeds the chart
+    const yMax = dataMax * 1.15, yMin = 0;
     const xRange = W - 2 * PAD, yRange = H - 2 * PAD;
     const sx = (x: number) => PAD + (x / xMax) * xRange;
     const sy = (y: number) => H - PAD - (y / yMax) * yRange;
@@ -241,16 +243,19 @@ const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
     const st = props.s.stress_rated;
     if (!st) return null;
     const yieldLine = props.s.material.yield_strength;
+    const chartYMax = data()?.yMax ?? 100;
+    const yieldInChart = yieldLine <= chartYMax;
+    const yy = yieldInChart ? sy(yieldLine) : PAD; // clamp to top if out of range
     return <>
       {[st.sigma_vm, st.sigma_h, st.sigma_r].map((arr, i) => (
         <path d={arr.map((_: number, j: number) => `${j === 0 ? "M" : "L"}${sx(st.r[j])},${sy(arr[j])}`).join(" ")}
           fill="none" stroke={cc[i]} stroke-width="1.5" />
       ))}
       {/* Yield strength reference line */}
-      <line x1={PAD} y1={sy(yieldLine)} x2={W - PAD} y2={sy(yieldLine)}
-        stroke="#F59E0B" stroke-width="1" stroke-dasharray="6 3" opacity="0.8" />
-      <text x={W - PAD - 2} y={sy(yieldLine) - 4} text-anchor="end" fill="#F59E0B" font-size="8" opacity="0.9">
-        σ_y = {yieldLine.toFixed(0)} MPa
+      <line x1={PAD} y1={yy} x2={W - PAD} y2={yy}
+        stroke="#F59E0B" stroke-width="1" stroke-dasharray={yieldInChart ? "6 3" : "3 2"} opacity="0.8" />
+      <text x={W - PAD - 2} y={yy - 4} text-anchor="end" fill="#F59E0B" font-size="8" opacity="0.9">
+        σ_y = {yieldLine.toFixed(0)} MPa{yieldInChart ? "" : " ↑"}
       </text>
     </>;
   };
