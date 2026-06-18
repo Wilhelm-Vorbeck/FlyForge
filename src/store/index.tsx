@@ -1,5 +1,6 @@
 import { createSignal, createContext, useContext, ParentComponent } from "solid-js";
 import { FlywheelParams, FlywheelType, FlywheelSimulation, Material } from "../types";
+import { persistSession } from "../utils/persist";
 
 // State type
 interface AppState {
@@ -21,7 +22,7 @@ interface AppContextType {
   resetParams: () => void;
 }
 
-// Default parameters
+// Default parameters (with session memory for flywheel type and material)
 const DEFAULT_PARAMS: FlywheelParams = {
   r_o: 200.0,
   r_i: 40.0,
@@ -32,8 +33,8 @@ const DEFAULT_PARAMS: FlywheelParams = {
   rpm_max: 4500.0,
   rpm_min: 1500.0,
   n_points: 100,
-  flywheel_type: FlywheelType.AnnularRing,
-  material_id: "aisi_4340",
+  flywheel_type: (persistSession.getFlywheelType() as FlywheelType) ?? FlywheelType.AnnularRing,
+  material_id: persistSession.getMaterialId() ?? "aisi_4340",
   safety_factor_yield: 1.5,
   safety_factor_fatigue: 1.5,
   safety_factor_burst: 2.0,
@@ -59,7 +60,13 @@ export const AppProvider: ParentComponent = (props) => {
   });
 
   const setParams = (newParams: Partial<FlywheelParams>) => {
-    setParamsSignal((prev) => ({ ...prev, ...newParams }));
+    setParamsSignal((prev) => {
+      const next = { ...prev, ...newParams };
+      // Persist session memory for flywheel type and material
+      if (newParams.flywheel_type !== undefined) persistSession.setFlywheelType(next.flywheel_type);
+      if (newParams.material_id !== undefined) persistSession.setMaterialId(next.material_id);
+      return next;
+    });
   };
 
   const setActivePreset = (name: string | null) => {

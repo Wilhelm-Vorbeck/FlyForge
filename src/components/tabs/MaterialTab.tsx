@@ -1,7 +1,8 @@
-import { Component, For } from "solid-js";
+import { Component, For, createSignal, Show } from "solid-js";
 import { useAppContext } from "../../store";
+import { persistCustomMaterials, CustomMaterial } from "../../utils/persist";
 
-const MATERIALS = [
+const BUILTIN_MATERIALS = [
   { id: "aisi_4340", name_zh: "AISI 4340 合金钢", density: 7850, yield_strength: 860 },
   { id: "aluminum_7075", name_zh: "7075-T6 铝合金", density: 2810, yield_strength: 503 },
   { id: "titanium_ti6al4v", name_zh: "Ti-6Al-4V 钛合金", density: 4430, yield_strength: 880 },
@@ -18,9 +19,51 @@ const MATERIALS = [
 
 const MaterialTab: Component = () => {
   const ctx = useAppContext();
+  const [showAdd, setShowAdd] = createSignal(false);
+  const [customMaterials, setCustomMaterials] = createSignal<CustomMaterial[]>(persistCustomMaterials.getAll());
+
+  // New material form state
+  const [newName, setNewName] = createSignal("");
+  const [newDensity, setNewDensity] = createSignal(7850);
+  const [newYield, setNewYield] = createSignal(400);
+  const [newTensile, setNewTensile] = createSignal(600);
+  const [newFatigue, setNewFatigue] = createSignal(300);
+
+  // Combined material list
+  const allMaterials = () => [
+    ...BUILTIN_MATERIALS,
+    ...customMaterials().map((m) => ({
+      id: m.id, name_zh: m.name_zh, density: m.density, yield_strength: m.yield_strength,
+    })),
+  ];
 
   const current = () =>
-    MATERIALS.find((m) => m.id === ctx.state().params.material_id) || MATERIALS[0];
+    allMaterials().find((m) => m.id === ctx.state().params.material_id) || allMaterials()[0];
+
+  const handleAdd = () => {
+    const name = newName().trim();
+    if (!name) return;
+    const id = `custom_${Date.now()}`;
+    const m: CustomMaterial = {
+      id, name_zh: name,
+      density: newDensity(), yield_strength: newYield(),
+      tensile_strength: newTensile(), fatigue_limit: newFatigue(),
+    };
+    persistCustomMaterials.add(m);
+    setCustomMaterials(persistCustomMaterials.getAll());
+    ctx.setParams({ material_id: id });
+    setShowAdd(false);
+    setNewName("");
+  };
+
+  const handleRemove = (id: string) => {
+    persistCustomMaterials.remove(id);
+    setCustomMaterials(persistCustomMaterials.getAll());
+    // Switch to default if removed material was selected
+    if (ctx.state().params.material_id === id) {
+      ctx.setParams({ material_id: "aisi_4340" });
+    }
+  };
 
   return (
     <div class="space-y-2.5">
@@ -32,10 +75,71 @@ const MaterialTab: Component = () => {
         onChange={(e) => ctx.setParams({ material_id: e.target.value })}
         class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
       >
-        <For each={MATERIALS}>
-          {(m) => <option value={m.id}>{m.name_zh}</option>}
-        </For>
+        <optgroup label="内置材料">
+          <For each={BUILTIN_MATERIALS}>
+            {(m) => <option value={m.id}>{m.name_zh}</option>}
+          </For>
+        </optgroup>
+        <Show when={customMaterials().length > 0}>
+          <optgroup label="自定义材料">
+            <For each={customMaterials()}>
+              {(m) => <option value={m.id}>{m.name_zh}</option>}
+            </For>
+          </optgroup>
+        </Show>
       </select>
+
+      {/* Add / Remove custom material buttons */}
+      <div class="flex gap-1">
+        <button onClick={() => setShowAdd(!showAdd())}
+          class="flex-1 text-[10px] py-1 rounded bg-[#1a2e22] text-emerald-400 hover:bg-[#2a4a32] transition-colors">
+          {showAdd() ? "取消" : "+ 自定义材料"}
+        </button>
+        <Show when={customMaterials().some((m) => m.id === ctx.state().params.material_id)}>
+          <button onClick={() => handleRemove(ctx.state().params.material_id)}
+            class="text-[10px] px-2 py-1 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors">
+            删除
+          </button>
+        </Show>
+      </div>
+
+      {/* Add custom material form */}
+      <Show when={showAdd()}>
+        <div class="bg-[#0d1419] border border-[#1a2e22] rounded p-2 space-y-2">
+          <div>
+            <label class="text-[10px] text-gray-500 block mb-0.5">材料名称</label>
+            <input type="text" value={newName()} onInput={(e) => setNewName(e.currentTarget.value)}
+              placeholder="如：自定义合金钢"
+              class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-gray-500 block mb-0.5">密度 (kg/m³)</label>
+              <input type="number" value={newDensity()} onInput={(e) => setNewDensity(parseFloat(e.currentTarget.value) || 0)}
+                class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-500 block mb-0.5">屈服强度 (MPa)</label>
+              <input type="number" value={newYield()} onInput={(e) => setNewYield(parseFloat(e.currentTarget.value) || 0)}
+                class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-500 block mb-0.5">抗拉强度 (MPa)</label>
+              <input type="number" value={newTensile()} onInput={(e) => setNewTensile(parseFloat(e.currentTarget.value) || 0)}
+                class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-500 block mb-0.5">疲劳极限 (MPa)</label>
+              <input type="number" value={newFatigue()} onInput={(e) => setNewFatigue(parseFloat(e.currentTarget.value) || 0)}
+                class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+          </div>
+          <button onClick={handleAdd} disabled={!newName().trim()}
+            class="w-full text-[10px] py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 transition-colors">
+            保存
+          </button>
+        </div>
+      </Show>
 
       {/* Compact properties */}
       <div class="grid grid-cols-3 gap-2 text-center">
@@ -58,7 +162,7 @@ const MaterialTab: Component = () => {
 
       {/* Strength bar comparison */}
       <div class="space-y-1">
-        <For each={MATERIALS.slice(0, 8)}>
+        <For each={allMaterials().slice(0, 12)}>
           {(m) => (
             <div class="flex items-center">
               <span class="text-[10px] text-gray-500 w-14 truncate">{m.name_zh.slice(0, 5)}</span>

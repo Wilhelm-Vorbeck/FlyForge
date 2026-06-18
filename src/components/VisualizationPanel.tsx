@@ -214,7 +214,7 @@ const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
     const st = props.s.stress_rated;
     if (!st || !st.r || st.r.length === 0) return null;
     const xMin = 0, xMax = Math.max(...st.r);
-    const yMax = Math.max(...st.sigma_vm) * 1.1 || 1, yMin = 0;
+    const yMax = Math.max(...st.sigma_vm, props.s.material.yield_strength) * 1.15 || 1, yMin = 0;
     const xRange = W - 2 * PAD, yRange = H - 2 * PAD;
     const sx = (x: number) => PAD + (x / xMax) * xRange;
     const sy = (y: number) => H - PAD - (y / yMax) * yRange;
@@ -235,15 +235,24 @@ const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
   };
 
   const cc = ["#EF4444", "#3B82F6", "#10B981"];
-  const cl = ["von Mises", "周向应力", "径向应力"];
+  const cl = ["von Mises", "周向应力", "径向应力", "屈服强度"];
 
   const renderLines = (sx: (x: number) => number, sy: (y: number) => number) => {
     const st = props.s.stress_rated;
     if (!st) return null;
-    return [st.sigma_vm, st.sigma_h, st.sigma_r].map((arr, i) => (
-      <path d={arr.map((_: number, j: number) => `${j === 0 ? "M" : "L"}${sx(st.r[j])},${sy(arr[j])}`).join(" ")}
-        fill="none" stroke={cc[i]} stroke-width="1.5" />
-    ));
+    const yieldLine = props.s.material.yield_strength;
+    return <>
+      {[st.sigma_vm, st.sigma_h, st.sigma_r].map((arr, i) => (
+        <path d={arr.map((_: number, j: number) => `${j === 0 ? "M" : "L"}${sx(st.r[j])},${sy(arr[j])}`).join(" ")}
+          fill="none" stroke={cc[i]} stroke-width="1.5" />
+      ))}
+      {/* Yield strength reference line */}
+      <line x1={PAD} y1={sy(yieldLine)} x2={W - PAD} y2={sy(yieldLine)}
+        stroke="#F59E0B" stroke-width="1" stroke-dasharray="6 3" opacity="0.8" />
+      <text x={W - PAD - 2} y={sy(yieldLine) - 4} text-anchor="end" fill="#F59E0B" font-size="8" opacity="0.9">
+        σ_y = {yieldLine.toFixed(0)} MPa
+      </text>
+    </>;
   };
 
   const renderValues = (ox: number, oy: number, x: number, labels: string[], colors: string[]) => {
@@ -272,7 +281,7 @@ const RpmChart: Component<{ s: FlywheelSimulation }> = (props) => {
   const data = () => {
     const t = props.s.time_curve, r = props.s.rpm_curve;
     if (!t || t.length === 0) return null;
-    const xMax = Math.max(...t), yMax = Math.max(...r), yMin = Math.min(...r);
+    const xMax = Math.max(...t), yMax = Math.max(...r, props.s.params.rpm_max) * 1.05, yMin = Math.min(...r, props.s.params.rpm_min) * 0.95;
     const pad = 0.05 * (yMax - yMin || 1);
     const xRange = W - 2 * PAD, yRange = H - 2 * PAD;
     const sx = (x: number) => PAD + (x / xMax) * xRange;
@@ -291,8 +300,23 @@ const RpmChart: Component<{ s: FlywheelSimulation }> = (props) => {
 
   const renderLines = (sx: (x: number) => number, sy: (y: number) => number) => {
     const t = props.s.time_curve, r = props.s.rpm_curve;
-    return <path d={t.map((tv: number, i: number) => `${i === 0 ? "M" : "L"}${sx(tv)},${sy(r[i])}`).join(" ")}
-      fill="none" stroke="#3B82F6" stroke-width="1.5" />;
+    const p = props.s.params;
+    return <>
+      <path d={t.map((tv: number, i: number) => `${i === 0 ? "M" : "L"}${sx(tv)},${sy(r[i])}`).join(" ")}
+        fill="none" stroke="#3B82F6" stroke-width="1.5" />
+      {/* Rated RPM reference line */}
+      <line x1={PAD} y1={sy(p.rpm_rated)} x2={W - PAD} y2={sy(p.rpm_rated)}
+        stroke="#10B981" stroke-width="1" stroke-dasharray="6 3" opacity="0.7" />
+      <text x={W - PAD - 2} y={sy(p.rpm_rated) - 4} text-anchor="end" fill="#10B981" font-size="8" opacity="0.8">
+        额定 {p.rpm_rated.toFixed(0)} rpm
+      </text>
+      {/* Max RPM reference line */}
+      <line x1={PAD} y1={sy(p.rpm_max)} x2={W - PAD} y2={sy(p.rpm_max)}
+        stroke="#EF4444" stroke-width="1" stroke-dasharray="6 3" opacity="0.7" />
+      <text x={W - PAD - 2} y={sy(p.rpm_max) - 4} text-anchor="end" fill="#EF4444" font-size="8" opacity="0.8">
+        最大 {p.rpm_max.toFixed(0)} rpm
+      </text>
+    </>;
   };
 
   const renderValues = (ox: number, oy: number, x: number, _l: string[], _c: string[]) => {

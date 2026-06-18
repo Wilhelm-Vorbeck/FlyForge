@@ -6,6 +6,7 @@ import {
   exportSimulationJson,
   exportSimulationSvg,
   exportParams,
+  importParams,
 } from "../services/api";
 
 const ExportPanel: Component = () => {
@@ -14,6 +15,46 @@ const ExportPanel: Component = () => {
   const [useDialog, setUseDialog] = createSignal(false);
   const sim = () => ctx.state().simulation;
 
+  // ── Import parameters from file ──
+  const handleImport = async () => {
+    try {
+      // Use File System Access API
+      if ("showOpenFilePicker" in window) {
+        const [handle] = await (window as any).showOpenFilePicker({
+          types: [{
+            description: "JSON文件",
+            accept: { "application/json": [".json"] },
+          }],
+          multiple: false,
+        });
+        const file = await handle.getFile();
+        const text = await file.text();
+        const params = await importParams(text);
+        ctx.setParams(params);
+        setStatus(`已导入: ${handle.name}`);
+      } else {
+        // Fallback: input element
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (!file) return;
+          const text = await file.text();
+          const params = await importParams(text);
+          ctx.setParams(params);
+          setStatus(`已导入: ${file.name}`);
+        };
+        input.click();
+      }
+      setTimeout(() => setStatus(null), 3000);
+    } catch (err: any) {
+      if (err?.name === "AbortError") { setStatus(null); return; }
+      setStatus(`导入失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // ── Export ──
   const handleExport = async (fmt: "csv" | "json" | "svg" | "params") => {
     const s = sim();
     if (!s && fmt !== "params") { setStatus("请先运行仿真"); return; }
@@ -77,13 +118,21 @@ const ExportPanel: Component = () => {
   return (
     <div>
       <div class="flex items-center justify-between mb-1">
-        <p class="text-[10px] text-gray-500">导出</p>
+        <p class="text-[10px] text-gray-500">导入 / 导出</p>
         <label class="flex items-center space-x-1 cursor-pointer">
           <input type="checkbox" checked={useDialog()} onChange={(e) => setUseDialog(e.currentTarget.checked)}
             class="w-3 h-3 rounded" />
           <span class="text-[9px] text-gray-400">自定义路径</span>
         </label>
       </div>
+
+      {/* Import button */}
+      <button onClick={handleImport}
+        class="w-full text-[10px] py-1.5 mb-1.5 rounded bg-[#0a2a1a]/80 text-emerald-300 hover:bg-[#0a3a2a]/80 transition-colors border border-[#1a4a2e]">
+        ⬆ 导入参数 JSON
+      </button>
+
+      {/* Export buttons */}
       <div class="grid grid-cols-2 gap-1">
         <button onClick={() => handleExport("csv")} disabled={!sim()}
           class="text-[10px] py-1 rounded bg-[#0f2a1a]/60 text-emerald-400 hover:bg-[#0f2a1a]/80 disabled:opacity-40 transition-colors border border-[#1a4a2e]">

@@ -1,15 +1,29 @@
-import { Component, createSignal } from "solid-js";
+import { Component, createSignal, onCleanup } from "solid-js";
 import AccordionPanel from "./AccordionPanel";
 import VisualizationPanel from "./VisualizationPanel";
 import ResultsPanel from "./ResultsPanel";
 import Header from "./Header";
 import SectionPreview from "./SectionPreview";
+import { persistLayout } from "../utils/persist";
 
 const Layout: Component = () => {
-  const [topRatio, setTopRatio] = createSignal(50);
+  // Restore layout state from localStorage
+  const [topRatio, setTopRatio] = createSignal(persistLayout.getTopRatio());
   const [dragging, setDragging] = createSignal(false);
-  const [leftOpen, setLeftOpen] = createSignal(true);
-  const [rightOpen, setRightOpen] = createSignal(true);
+  const [leftOpen, setLeftOpen] = createSignal(persistLayout.getLeftOpen());
+  const [rightOpen, setRightOpen] = createSignal(persistLayout.getRightOpen());
+
+  // Persist on change
+  const toggleLeft = () => {
+    const v = !leftOpen();
+    setLeftOpen(v);
+    persistLayout.setLeftOpen(v);
+  };
+  const toggleRight = () => {
+    const v = !rightOpen();
+    setRightOpen(v);
+    persistLayout.setRightOpen(v);
+  };
 
   let containerRef: HTMLDivElement | undefined;
 
@@ -18,11 +32,12 @@ const Layout: Component = () => {
     setDragging(true);
     const rect = containerRef!.getBoundingClientRect();
     const onMove = (ev: MouseEvent) => {
-      const pct = ((ev.clientY - rect.top) / rect.height) * 100;
-      setTopRatio(Math.max(20, Math.min(80, pct)));
+      const pct = Math.max(20, Math.min(80, ((ev.clientY - rect.top) / rect.height) * 100));
+      setTopRatio(pct);
     };
     const onUp = () => {
       setDragging(false);
+      persistLayout.setTopRatio(Math.round(topRatio()));
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
@@ -32,7 +47,7 @@ const Layout: Component = () => {
 
   return (
     <div class="flex flex-col h-screen overflow-hidden bg-[#0a0f14] text-white">
-      <Header leftOpen={leftOpen} rightOpen={rightOpen} onToggleLeft={() => setLeftOpen(!leftOpen())} onToggleRight={() => setRightOpen(!rightOpen())} />
+      <Header leftOpen={leftOpen} rightOpen={rightOpen} onToggleLeft={toggleLeft} onToggleRight={toggleRight} />
       <div class="flex flex-1 overflow-hidden min-h-0">
         {/* Left */}
         <aside class={`${leftOpen() ? "w-56" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-r border-[#1a2e22]`}>

@@ -8,6 +8,8 @@ interface NumberInputProps {
   min?: number;
   max?: number;
   step?: number;
+  error?: boolean;
+  errorMessage?: string;
 }
 
 const NumberInput: Component<NumberInputProps> = (props) => {
@@ -56,7 +58,9 @@ const NumberInput: Component<NumberInputProps> = (props) => {
             const v = parseFloat(e.currentTarget.value);
             if (!isNaN(v)) props.onChange(Math.min(Math.max(v, min), max));
           }}
-          class="w-16 bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          class={`w-16 bg-[#111a22] border rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 transition-colors ${
+            props.error ? "border-red-500 focus:ring-red-500" : "border-[#1a2e22] focus:ring-emerald-500"
+          }`}
         />
         <div class="flex flex-col ml-1">
           <button
@@ -78,6 +82,9 @@ const NumberInput: Component<NumberInputProps> = (props) => {
         </div>
         <span class="text-[9px] text-gray-500 w-8 ml-1">{props.unit}</span>
       </div>
+      {props.error && props.errorMessage && (
+        <p class="text-[8px] text-red-400 ml-14 mt-0.5 truncate" title={props.errorMessage}>{props.errorMessage}</p>
+      )}
     </div>
   );
 };
