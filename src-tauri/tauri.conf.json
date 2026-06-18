@@ -20,7 +20,8 @@
         "maxWidth": 1920,
         "maxHeight": 1200,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "skipTaskbar": true
       }
     ],
     "security": {
