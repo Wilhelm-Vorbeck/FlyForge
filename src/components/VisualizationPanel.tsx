@@ -237,7 +237,7 @@ const StressChart: Component<{ s: FlywheelSimulation }> = (props) => {
   };
 
   const cc = ["#EF4444", "#3B82F6", "#10B981"];
-  const cl = ["von Mises", "周向应力", "径向应力", "屈服强度"];
+  const cl = ["等效应力", "周向应力", "径向应力", "屈服强度"];
 
   const renderLines = (sx: (x: number) => number, sy: (y: number) => number) => {
     const st = props.s.stress_rated;

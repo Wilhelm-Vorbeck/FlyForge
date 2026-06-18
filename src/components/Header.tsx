@@ -28,23 +28,14 @@ const Header: Component<HeaderProps> = (props) => {
           </svg>
         </div>
         <span class="text-sm font-bold">FlyForge</span>
-        <span class="text-[10px] text-gray-500">v0.1.0</span>
+        <span class="text-[10px] text-gray-500">v0.2.0</span>
       </div>
 
       <div class="flex items-center space-x-3">
-        {/* Error takes priority over loading */}
-        <Show when={ctx.state().error && !ctx.state().isLoading}>
+        {/* Error */}
+        <Show when={ctx.state().error}>
           <span class="text-[10px] text-red-400 truncate max-w-[300px]" title={ctx.state().error!}>
             ⚠ {ctx.state().error}
-          </span>
-        </Show>
-        <Show when={ctx.state().isLoading && !ctx.state().error}>
-          <span class="text-[10px] text-emerald-400 flex items-center space-x-1">
-            <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <span>计算中</span>
           </span>
         </Show>
 
