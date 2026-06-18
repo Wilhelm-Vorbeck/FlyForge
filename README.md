@@ -20,7 +20,7 @@
 
 ## 致谢与灵感来源
 
-> **本项目的灵感来源与对标项目：[CamForge](https://github.com/wcl2023jj/CamForge)**
+> **本项目的灵感来源与对标项目：[CamForge](https://github.com/EkaEva/CamForge)**
 >
 > CamForge 是一款基于 Tauri v2 的凸轮设计桌面应用，提供了参数输入、凸轮轮廓预览、运动分析曲线等完整的工程设计功能。
 >
@@ -153,4 +153,4 @@ FlyForge/
 
 | 项目 | 说明 |
 |------|------|
-| [CamForge](https://github.com/wcl2023jj/CamForge) | 凸轮设计桌面应用（本项目灵感来源） |
+| [CamForge](https://github.com/EkaEva/CamForge) | 凸轮设计桌面应用（本项目灵感来源） |
