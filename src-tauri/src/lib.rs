@@ -1,5 +1,6 @@
 use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_params_json, import_params_json};
 use flyforge_core::fatigue::estimate_fatigue_life;
+use flyforge_core::sensitivity::{run_sweep, SweepParam, SweepMetric, SensitivityPoint};
 use flyforge_core::solver::SolverRegistry;
 use flyforge_core::types::{FlywheelParams, FlywheelSimulation, Material, materials};
 use serde::{Deserialize, Serialize};
@@ -99,6 +100,70 @@ fn get_fatigue_estimate(sim: FlywheelSimulation) -> FatigueResultDto {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SensitivityPointDto {
+    pub param_value: f64,
+    pub metric_value: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SensitivityResultDto {
+    pub points: Vec<SensitivityPointDto>,
+    pub param_name: String,
+    pub param_unit: String,
+    pub metric_name: String,
+    pub metric_unit: String,
+    pub base_metric_value: f64,
+}
+
+#[tauri::command]
+fn run_sensitivity_sweep(
+    params: FlywheelParams,
+    material: Material,
+    sweep_param: String,
+    sweep_metric: String,
+    from: f64,
+    to: f64,
+    num_points: usize,
+) -> Result<SensitivityResultDto, String> {
+    let param: SweepParam = match sweep_param.as_str() {
+        "r_o" => SweepParam::OuterRadius,
+        "r_i" => SweepParam::InnerRadius,
+        "thickness" => SweepParam::Thickness,
+        "r_hub" => SweepParam::HubRadius,
+        "hub_thickness" => SweepParam::HubThickness,
+        "rpm_rated" => SweepParam::RatedRpm,
+        "rpm_max" => SweepParam::MaxRpm,
+        _ => return Err(format!("Unknown sweep parameter: {}", sweep_param)),
+    };
+
+    let metric = match sweep_metric.as_str() {
+        "max_stress" => SweepMetric::MaxStress,
+        "mass" => SweepMetric::Mass,
+        "inertia" => SweepMetric::Inertia,
+        "energy_rated" => SweepMetric::EnergyRated,
+        "energy_usable" => SweepMetric::EnergyUsable,
+        "specific_energy" => SweepMetric::SpecificEnergy,
+        "safety_yield" => SweepMetric::SafetyYield,
+        "safety_fatigue" => SweepMetric::SafetyFatigue,
+        _ => return Err(format!("Unknown sweep metric: {}", sweep_metric)),
+    };
+
+    let result = run_sweep(&params, &material, param, metric, from, to, num_points);
+
+    Ok(SensitivityResultDto {
+        points: result.points.into_iter().map(|p| SensitivityPointDto {
+            param_value: p.param_value,
+            metric_value: p.metric_value,
+        }).collect(),
+        param_name: result.param_name,
+        param_unit: result.param_unit,
+        metric_name: result.metric_name,
+        metric_unit: result.metric_unit,
+        base_metric_value: result.base_metric_value,
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -114,6 +179,7 @@ pub fn run() {
             import_params,
             save_file_content,
             get_fatigue_estimate,
+            run_sensitivity_sweep,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

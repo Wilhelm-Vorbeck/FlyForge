@@ -15,6 +15,7 @@ pub mod safety;
 pub mod energy;
 pub mod fatigue;
 pub mod dynamics;
+pub mod sensitivity;
 pub mod unbalance;
 pub mod export;
 

@@ -103,3 +103,33 @@ export async function getFatigueEstimate(sim: FlywheelSimulation): Promise<{
 }> {
   return await invoke("get_fatigue_estimate", { sim });
 }
+
+/**
+ * Run parameter sensitivity sweep
+ */
+export async function runSensitivitySweep(
+  params: FlywheelParams,
+  material: Material,
+  sweepParam: string,
+  sweepMetric: string,
+  from: number,
+  to: number,
+  numPoints: number,
+): Promise<{
+  points: { param_value: number; metric_value: number }[];
+  param_name: string;
+  param_unit: string;
+  metric_name: string;
+  metric_unit: string;
+  base_metric_value: number;
+}> {
+  return await invoke("run_sensitivity_sweep", {
+    params,
+    material,
+    sweepParam,
+    sweepMetric,
+    from,
+    to,
+    numPoints,
+  });
+}
