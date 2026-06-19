@@ -615,35 +615,36 @@ const SNChart: Component<{ s: FlywheelSimulation }> = (props) => {
     const sd = snData();
     if (!sd || sd.curve.length === 0) return null;
 
-    // Log-scale X axis (cycles), linear Y (stress)
-    const xMin = Math.log10(sd.curve[0].cycles);
-    const xMax = Math.log10(sd.curve[sd.curve.length - 1].cycles);
+    // Use linear cycles for domain (so isInPlot/crosshair work), log-scale for display
+    const xMin = sd.curve[0].cycles;
+    const xMax = sd.curve[sd.curve.length - 1].cycles;
+    const logMin = Math.log10(xMin);
+    const logMax = Math.log10(xMax);
     const yMax = Math.max(sd.fatigue_limit, sd.operating_stress !== Infinity ? sd.operating_stress : 0, ...sd.curve.map(p => p.stress_amplitude)) * 1.2;
     const yMin = 0;
 
     const xRange = W - 2 * PAD, yRange = H - 2 * PAD;
-    const sxLog = (logN: number) => PAD + ((logN - xMin) / (xMax - xMin)) * xRange;
+    const toScreenX = (cycles: number) => PAD + ((Math.log10(cycles) - logMin) / (logMax - logMin)) * xRange;
     const sy = (y: number) => H - PAD - (y / yMax) * yRange;
-    const xVal = (svx: number) => 10.0 ** (xMin + ((svx - PAD) / xRange) * (xMax - xMin));
+    const xVal = (svx: number) => 10.0 ** (logMin + ((svx - PAD) / xRange) * (logMax - logMin));
     const yVal = (svy: number) => (1 - (svy - PAD) / yRange) * yMax;
 
     let specialX: number[] = [];
     let specialY: number[] = [sd.fatigue_limit];
     if (sd.operating_stress > 0 && sd.operating_cycles !== Infinity) {
-      specialX.push(Math.log10(sd.operating_cycles));
+      specialX.push(sd.operating_cycles);
       specialY.push(sd.operating_stress);
     }
 
     return { xMin, xMax, yMin, yMax, xLabel: "循环次数 N", yLabel: "应力幅",
-      xTicks: [3,4,5,6,7,8,9].filter(t => t >= xMin && t <= xMax),
+      xTicks: [3,4,5,6,7,8,9].filter(t => t >= logMin && t <= logMax),
       yTicks: niceTicks(yMin, yMax, 6),
       specialX, specialY,
-      xFormat: (v: number) => `10^{${v.toFixed(0)}}`,
+      xFormat: (v: number) => v >= 100 ? `10^{${Math.log10(v).toFixed(0)}}` : `10^{${v.toFixed(0)}}`,
       yFormat: (v: number) => v.toFixed(0) + "MPa",
-      xVal: (svx: number) => 10.0 ** (xMin + ((svx - PAD) / xRange) * (xMax - xMin)),
+      xVal,
       yVal,
-      // sx takes raw cycles, converts to log10 internally
-      sx: (cycles: number) => sxLog(Math.log10(cycles)),
+      sx: toScreenX,
       sy };
   };
 
