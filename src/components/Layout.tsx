@@ -35,6 +35,8 @@ const Layout: Component = () => {
   const onMouseDown = (e: MouseEvent) => {
     e.preventDefault();
     setDragging(true);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   };
 
   const onMouseMove = (e: MouseEvent) => {
@@ -44,10 +46,14 @@ const Layout: Component = () => {
     const h = rect.height;
     const pct = Math.max(15, Math.min(80, (y / h) * 100));
     setTopRatio(pct);
-    persistLayout.setTopRatio(pct);
   };
 
-  const onMouseUp = () => setDragging(false);
+  const onMouseUp = () => {
+    setDragging(false);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+    persistLayout.setTopRatio(topRatio());
+  };
 
   onCleanup(() => {
     window.removeEventListener("mousemove", onMouseMove);
