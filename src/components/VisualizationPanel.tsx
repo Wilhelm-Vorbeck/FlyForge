@@ -433,7 +433,7 @@ const SensitivityChart: Component<{ s: FlywheelSimulation }> = (props) => {
   const data = () => {
     const sd = swData();
     if (!sd) return null;
-    const valid = sd.points.filter(p => isFinite(p.param_value) && isFinite(p.metric_value));
+    const valid = sd.points.filter(p => p.param_value != null && isFinite(p.param_value) && p.metric_value != null && isFinite(p.metric_value));
     if (valid.length < 2) return null;
     const xMin = Math.min(...valid.map(p => p.param_value));
     const xMax = Math.max(...valid.map(p => p.param_value));
@@ -460,7 +460,7 @@ const SensitivityChart: Component<{ s: FlywheelSimulation }> = (props) => {
   const renderLines = (sx: (x: number) => number, sy: (y: number) => number) => {
     const sd = swData();
     if (!sd) return null;
-    const valid = sd.points.filter(p => isFinite(p.param_value) && isFinite(p.metric_value));
+    const valid = sd.points.filter(p => p.param_value != null && p.metric_value != null && isFinite(p.param_value) && isFinite(p.metric_value));
     if (valid.length < 2) return null;
     const d = valid.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.param_value)},${sy(p.metric_value)}`);
     return <path d={d.join(" ")} fill="none" stroke="#3B82F6" stroke-width="2" />;
@@ -468,8 +468,8 @@ const SensitivityChart: Component<{ s: FlywheelSimulation }> = (props) => {
 
   const renderValues = (ox: number, oy: number, x: number, _l: string[], _c: string[]) => {
     const sd = swData();
-    if (!sd) return null;
-    const valid = sd.points.filter(p => isFinite(p.param_value) && isFinite(p.metric_value));
+    if (!sd || x == null || !isFinite(x)) return null;
+    const valid = sd.points.filter(p => p.param_value != null && p.metric_value != null && isFinite(p.param_value) && isFinite(p.metric_value));
     const interp = () => {
       if (x <= valid[0].param_value) return valid[0].metric_value;
       for (let i = 1; i < valid.length; i++)
@@ -502,7 +502,7 @@ const SensitivityChart: Component<{ s: FlywheelSimulation }> = (props) => {
       </div>
 
       {/* Chart */}
-      <Show when={swData() && swData()!.points.filter(p => isFinite(p.metric_value)).length >= 2}
+      <Show when={swData() && swData()!.points.filter(p => p.metric_value != null && isFinite(p.metric_value)).length >= 2}
         fallback={
           swData.loading
             ? <div class="flex-1 flex items-center justify-center text-gray-500 text-[10px]">扫描中...</div>

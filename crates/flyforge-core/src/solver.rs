@@ -416,13 +416,14 @@ impl SolverRegistry {
             100,
         );
 
-        // Step 5: Find max stress and location
+        // Step 5: Find max stress and location (handle NaN safely)
         let max_vm = output
             .stress
             .sigma_vm
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .filter(|(_, &v)| v.is_finite())
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(idx, &val)| (idx, val))
             .unwrap_or((0, 0.0));
 

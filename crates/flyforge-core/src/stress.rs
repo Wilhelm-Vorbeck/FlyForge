@@ -40,10 +40,20 @@ pub fn lame_stress_annular(
 
     for &radius in r {
         let r2 = radius * radius;
-        let sr = coeff * (r_o2 + r_i2 - o_i_product / r2 - r2);
-        let sh = coeff * (r_o2 + r_i2 + o_i_product / r2 - hoop_r2_coeff * r2);
-        sigma_r.push(sr);
-        sigma_h.push(sh);
+        // When r_i=0 and r=0 (first radial point), the term o_i_product/r2 = 0/0 = NaN.
+        // At r=0 the hoop stress is well-defined (equals center stress of solid disk).
+        // Use the solid disk formula at this singular point.
+        if r2 < 1e-24 {
+            let sr = coeff * (r_o2 - r2);
+            let sh = coeff * (r_o2 - hoop_r2_coeff * r2);
+            sigma_r.push(sr);
+            sigma_h.push(sh);
+        } else {
+            let sr = coeff * (r_o2 + r_i2 - o_i_product / r2 - r2);
+            let sh = coeff * (r_o2 + r_i2 + o_i_product / r2 - hoop_r2_coeff * r2);
+            sigma_r.push(sr);
+            sigma_h.push(sh);
+        }
     }
 
     (sigma_r, sigma_h)

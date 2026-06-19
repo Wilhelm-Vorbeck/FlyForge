@@ -164,11 +164,13 @@ pub fn run_sweep(
             continue;
         }
 
-        let result = registry.simulate(&p, material);
-        let metric_val = result
-            .as_ref()
-            .map(|s| metric.extract(s))
-            .unwrap_or(f64::NAN);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            registry.simulate(&p, material)
+        }));
+        let metric_val = match result {
+            Ok(Ok(sim)) => metric.extract(&sim),
+            _ => f64::NAN,
+        };
 
         points.push(SensitivityPoint {
             param_value: val,
