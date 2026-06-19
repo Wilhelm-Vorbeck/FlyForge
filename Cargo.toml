@@ -4,7 +4,7 @@ members = ["crates/flyforge-core", "crates/flyforge-server"]
 exclude = ["src-tauri"]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["FlyForge Team"]
 license = "MIT"
