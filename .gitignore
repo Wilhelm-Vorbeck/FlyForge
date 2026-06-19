@@ -6,6 +6,7 @@ Cargo.lock
 # Node.js
 node_modules/
 dist/
+dist-*/
 
 # Tauri
 src-tauri/target/
