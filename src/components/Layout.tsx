@@ -4,16 +4,16 @@ import VisualizationPanel from "./VisualizationPanel";
 import ResultsPanel from "./ResultsPanel";
 import Header from "./Header";
 import SectionPreview from "./SectionPreview";
+import CrossSection from "./CrossSection";
 import { persistLayout } from "../utils/persist";
 
 const Layout: Component = () => {
-  // Restore layout state from localStorage
   const [topRatio, setTopRatio] = createSignal(persistLayout.getTopRatio());
   const [dragging, setDragging] = createSignal(false);
   const [leftOpen, setLeftOpen] = createSignal(persistLayout.getLeftOpen());
   const [rightOpen, setRightOpen] = createSignal(persistLayout.getRightOpen());
+  const [csVisible, setCsVisible] = createSignal(persistLayout.getCsVisible());
 
-  // Persist on change
   const toggleLeft = () => {
     const v = !leftOpen();
     setLeftOpen(v);
@@ -24,42 +24,61 @@ const Layout: Component = () => {
     setRightOpen(v);
     persistLayout.setRightOpen(v);
   };
+  const toggleCs = () => {
+    const v = !csVisible();
+    setCsVisible(v);
+    persistLayout.setCsVisible(v);
+  };
 
   let containerRef: HTMLDivElement | undefined;
 
   const onMouseDown = (e: MouseEvent) => {
     e.preventDefault();
     setDragging(true);
-    const rect = containerRef!.getBoundingClientRect();
-    const onMove = (ev: MouseEvent) => {
-      const pct = Math.max(20, Math.min(80, ((ev.clientY - rect.top) / rect.height) * 100));
-      setTopRatio(pct);
-    };
-    const onUp = () => {
-      setDragging(false);
-      persistLayout.setTopRatio(Math.round(topRatio()));
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
   };
 
+  const onMouseMove = (e: MouseEvent) => {
+    if (!dragging() || !containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const h = rect.height;
+    const pct = Math.max(15, Math.min(80, (y / h) * 100));
+    setTopRatio(pct);
+    persistLayout.setTopRatio(pct);
+  };
+
+  const onMouseUp = () => setDragging(false);
+
+  onCleanup(() => {
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  });
+
   return (
-    <div class="flex flex-col h-screen overflow-hidden bg-[#0a0f14] text-white">
-      <Header leftOpen={leftOpen} rightOpen={rightOpen} onToggleLeft={toggleLeft} onToggleRight={toggleRight} />
+    <div class="h-screen flex flex-col overflow-hidden">
+      <Header leftOpen={leftOpen} rightOpen={rightOpen} onToggleLeft={toggleLeft} onToggleRight={toggleRight} csVisible={csVisible} onToggleCs={toggleCs} />
+
       <div class="flex flex-1 overflow-hidden min-h-0">
-        {/* Left */}
+        {/* Left sidebar */}
         <aside class={`${leftOpen() ? "w-56" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-r border-[#1a2e22]`}>
           <AccordionPanel />
         </aside>
 
-        {/* Center: Resizable top/bottom */}
+        {/* Center */}
         <div ref={containerRef} class="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {/* Top: Preview */}
-          <div class="overflow-hidden bg-[#0a0f14] p-2 relative" style={{ height: `${topRatio()}%` }}>
+          {/* Fixed offset: cross-section (88px when visible) + drag handle (8px) */}
+          {/* Top: circle preview */}
+          <div class="overflow-auto bg-[#0a0f14] p-2"
+            style={{
+              height: csVisible()
+                ? `calc((100% - 96px) * ${topRatio()} / 100)`
+                : `calc((100% - 8px) * ${topRatio()} / 100)`
+            }}>
             <SectionPreview />
           </div>
+
+          {/* Cross-section bar — fixed 88px, between preview and drag handle */}
+          <CrossSection visible={csVisible()} onToggle={toggleCs} />
 
           {/* Drag handle */}
           <div
@@ -71,17 +90,20 @@ const Layout: Component = () => {
             <div class="w-8 h-0.5 bg-gray-500 rounded" />
           </div>
 
-          {/* Bottom: Charts */}
-          <div class="overflow-auto bg-[#0a0f14] p-2" style={{ height: `${100 - topRatio()}%` }}>
+          {/* Bottom: charts */}
+          <div class="overflow-auto bg-[#0a0f14] p-2"
+            style={{
+              height: csVisible()
+                ? `calc((100% - 96px) * ${100 - topRatio()} / 100)`
+                : `calc((100% - 8px) * ${100 - topRatio()} / 100)`
+            }}>
             <VisualizationPanel />
           </div>
         </div>
 
-        {/* Right */}
+        {/* Right sidebar */}
         <aside class={`${rightOpen() ? "w-60" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-l border-[#1a2e22]`}>
-          <div class="w-60 p-3">
-            <ResultsPanel />
-          </div>
+          <ResultsPanel />
         </aside>
       </div>
     </div>

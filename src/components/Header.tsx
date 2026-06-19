@@ -6,6 +6,8 @@ interface HeaderProps {
   rightOpen: Accessor<boolean>;
   onToggleLeft: () => void;
   onToggleRight: () => void;
+  csVisible: Accessor<boolean>;
+  onToggleCs: () => void;
 }
 
 const Header: Component<HeaderProps> = (props) => {
@@ -38,6 +40,12 @@ const Header: Component<HeaderProps> = (props) => {
             ⚠ {ctx.state().error}
           </span>
         </Show>
+
+        <button onClick={props.onToggleCs}
+          class={`text-[10px] px-2 py-1 rounded transition-colors ${props.csVisible() ? "text-emerald-400 bg-[#1a2e22]" : "text-gray-500 hover:text-gray-300 hover:bg-gray-700"}`}
+          title="切换剖面图显示">
+          ▥ 剖面
+        </button>
 
         <button onClick={ctx.resetParams} class="text-[10px] text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-700 transition-colors">
           重置

@@ -33,6 +33,9 @@ export const persistLayout = {
 
   getTopRatio: () => get("topRatio", 50),
   setTopRatio: (v: number) => set("topRatio", v),
+
+  getCsVisible: () => get("csVisible", true),
+  setCsVisible: (v: boolean) => set("csVisible", v),
 };
 
 // ── Last used params ──
