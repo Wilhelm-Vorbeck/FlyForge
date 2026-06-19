@@ -1,4 +1,4 @@
-import { Component, createSignal, onCleanup } from "solid-js";
+import { Component, createSignal, createEffect, onCleanup } from "solid-js";
 
 interface NumberInputProps {
   label: string;
@@ -17,43 +17,27 @@ const NumberInput: Component<NumberInputProps> = (props) => {
   const min = props.min ?? -Infinity;
   const max = props.max ?? Infinity;
 
-  // Local text buffer to allow intermediate typing (e.g. "12." → trailing dot)
+  // Local text buffer — separate from props.value to allow "12." typing
   const [text, setText] = createSignal(String(props.value));
+  const [focused, setFocused] = createSignal(false);
 
-  // Sync from external value when not editing
-  const syncFromProps = (external: number) => {
-    // Only sync if the current text doesn't parse to the same number
-    // (i.e. don't overwrite "12." with "12" while user is typing)
-    const currentParsed = parseFloat(text());
-    if (isNaN(currentParsed) || currentParsed !== external) {
-      setText(String(external));
+  // Sync text from props when value changes externally (not from user typing)
+  createEffect(() => {
+    const v = props.value;
+    if (!focused()) {
+      setText(String(v));
     }
-  };
-
-  // React to prop changes
-  let lastPropValue = props.value;
-  onCleanup(() => {});
-  // Use a simple effect via the component body — Solid recreates this each time
-  if (props.value !== lastPropValue) {
-    lastPropValue = props.value;
-    const currentParsed = parseFloat(text());
-    if (isNaN(currentParsed) || Math.abs(currentParsed - props.value) > 0.001) {
-      setText(String(props.value));
-    }
-  }
+  });
 
   const commit = (raw: string) => {
     const v = parseFloat(raw);
-    if (isNaN(v)) {
-      // Restore previous valid value
-      setText(String(props.value));
+    if (isNaN(v) || raw === "") {
+      setText(String(props.value)); // restore
       return;
     }
     const clamped = Math.min(Math.max(v, min), max);
-    if (clamped !== props.value) {
-      props.onChange(clamped);
-    }
-    setText(String(props.value !== clamped ? clamped : props.value));
+    props.onChange(clamped);
+    setText(String(clamped));
   };
 
   // Long press rapid fire
@@ -92,24 +76,19 @@ const NumberInput: Component<NumberInputProps> = (props) => {
           value={text()}
           onInput={(e) => {
             const raw = e.currentTarget.value;
-            // Allow intermediate states like "12.", ".5", "10.0"
-            // Only reject obviously non-numeric typing
-            if (raw === "" || raw === "-" || raw === "." || raw.endsWith(".") || raw.endsWith("0") && raw.includes(".")) {
-              setText(raw);
-              // Try to parse partially — if we get NaN, keep the text as-is
-              const v = parseFloat(raw);
-              if (isNaN(v)) return;
-              if (v >= min && v <= max) props.onChange(v);
-              return;
-            }
             setText(raw);
+            // Try to parse and fire onChange if valid
             const v = parseFloat(raw);
             if (!isNaN(v)) {
               const clamped = Math.min(Math.max(v, min), max);
               if (clamped !== props.value) props.onChange(clamped);
             }
           }}
-          onBlur={(e) => commit(e.currentTarget.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={(e) => {
+            setFocused(false);
+            commit(e.currentTarget.value);
+          }}
           class={`w-16 bg-[#111a22] border rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 transition-colors ${
             props.error ? "border-red-500 focus:ring-red-500" : "border-[#1a2e22] focus:ring-emerald-500"
           }`}
