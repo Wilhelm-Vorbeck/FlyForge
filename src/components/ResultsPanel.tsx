@@ -1,6 +1,7 @@
-import { Component, Show, For } from "solid-js";
+import { Component, Show, For, createResource } from "solid-js";
 import { useAppContext } from "../store";
 import ExportPanel from "./ExportPanel";
+import { getFatigueEstimate } from "../services/api";
 
 interface MiniCardProps {
   label: string;
@@ -22,6 +23,16 @@ const MiniCard: Component<MiniCardProps> = (props) => (
 const ResultsPanel: Component = () => {
   const ctx = useAppContext();
   const sim = () => ctx.state().simulation;
+
+  // Fatigue estimation — re-fetches when simulation changes
+  const [fatigue] = createResource(sim, async (s) => {
+    if (!s) return null;
+    try {
+      return await getFatigueEstimate(s);
+    } catch {
+      return null;
+    }
+  });
 
   return (
     <div class="space-y-3">
@@ -77,6 +88,26 @@ const ResultsPanel: Component = () => {
                   {(w) => <p class="text-[10px] text-red-400">⚠ {w}</p>}
                 </For>
               </div>
+            </Show>
+
+            {/* Fatigue estimation */}
+            <Show when={fatigue()}>
+              {(f) => (
+                <div class={`rounded px-2 py-1.5 border ${
+                  f().infinite_life ? "bg-[#0f2a1a]/60 border-[#1a4a2e]" : f().years > 5
+                    ? "bg-[#1a2e22]/60 border-[#1a4a2e]" : "bg-red-900/20 border-red-800/50"
+                }`}>
+                  <p class="text-[9px] text-gray-500 mb-0.5">疲劳寿命估算</p>
+                  <p class={`text-[10px] font-medium leading-relaxed ${
+                    f().infinite_life ? "text-green-400" : f().years > 5 ? "text-gray-300" : "text-red-400"
+                  }`}>
+                    {f().life_description}
+                  </p>
+                  <p class="text-[8px] text-gray-500 mt-0.5">
+                    σ_a={f().stress_amplitude.toFixed(1)}MPa · 安全裕度={f().safety_margin > 0 ? "+" : ""}{f().safety_margin.toFixed(2)}
+                  </p>
+                </div>
+              )}
             </Show>
 
             {/* Status */}

@@ -1,4 +1,5 @@
 use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_params_json, import_params_json};
+use flyforge_core::fatigue::estimate_fatigue_life;
 use flyforge_core::solver::SolverRegistry;
 use flyforge_core::types::{FlywheelParams, FlywheelSimulation, Material, materials};
 use serde::{Deserialize, Serialize};
@@ -8,6 +9,16 @@ use std::fs;
 pub struct AppInfo {
     pub name: String,
     pub version: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FatigueResultDto {
+    pub stress_amplitude: f64,
+    pub cycles: f64,
+    pub years: f64,
+    pub safety_margin: f64,
+    pub infinite_life: bool,
+    pub life_description: String,
 }
 
 #[tauri::command]
@@ -72,6 +83,22 @@ fn save_file_content(path: String, content: String) -> Result<(), String> {
     fs::write(&path, content).map_err(|e| format!("保存文件失败: {}", e))
 }
 
+#[tauri::command]
+fn get_fatigue_estimate(sim: FlywheelSimulation) -> FatigueResultDto {
+    let mat = &sim.material;
+    let max_vm = sim.max_stress_rated;
+    let mean_stress = max_vm * 0.3; // approximate mean stress as 30% of max
+    let result = estimate_fatigue_life(mat, max_vm, mean_stress);
+    FatigueResultDto {
+        stress_amplitude: result.stress_amplitude,
+        cycles: result.cycles,
+        years: result.years,
+        safety_margin: result.safety_margin,
+        infinite_life: result.infinite_life,
+        life_description: result.life_description,
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -86,6 +113,7 @@ pub fn run() {
             export_params,
             import_params,
             save_file_content,
+            get_fatigue_estimate,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
