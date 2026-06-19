@@ -1,4 +1,4 @@
-import { Component, createSignal, onCleanup } from "solid-js";
+import { Component, createSignal, onCleanup, Show } from "solid-js";
 import AccordionPanel from "./AccordionPanel";
 import VisualizationPanel from "./VisualizationPanel";
 import ResultsPanel from "./ResultsPanel";
@@ -13,33 +13,33 @@ const Layout: Component = () => {
   const [leftOpen, setLeftOpen] = createSignal(persistLayout.getLeftOpen());
   const [rightOpen, setRightOpen] = createSignal(persistLayout.getRightOpen());
   const [csVisible, setCsVisible] = createSignal(persistLayout.getCsVisible());
+  const [csHeight, setCsHeight] = createSignal(persistLayout.getCsHeight());
+  const [circleZoom, setCircleZoom] = createSignal(1);
+  const [circlePanX, setCirclePanX] = createSignal(0);
 
-  const toggleLeft = () => {
-    const v = !leftOpen();
-    setLeftOpen(v);
-    persistLayout.setLeftOpen(v);
-  };
-  const toggleRight = () => {
-    const v = !rightOpen();
-    setRightOpen(v);
-    persistLayout.setRightOpen(v);
-  };
-  const toggleCs = () => {
-    const v = !csVisible();
-    setCsVisible(v);
-    persistLayout.setCsVisible(v);
+  const [csResizing, setCsResizing] = createSignal(false);
+  let csResizeLastY = 0;
+
+  const toggleLeft = () => { const v = !leftOpen(); setLeftOpen(v); persistLayout.setLeftOpen(v); };
+  const toggleRight = () => { const v = !rightOpen(); setRightOpen(v); persistLayout.setRightOpen(v); };
+  const toggleCs = () => { const v = !csVisible(); setCsVisible(v); persistLayout.setCsVisible(v); };
+
+  const onCircleViewChange = (z: number, px: number) => {
+    setCircleZoom(z);
+    setCirclePanX(px);
   };
 
+  // ── Top/bottom ratio drag ──
   let containerRef: HTMLDivElement | undefined;
 
-  const onMouseDown = (e: MouseEvent) => {
+  const onRatioMouseDown = (e: MouseEvent) => {
     e.preventDefault();
     setDragging(true);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("mousemove", onRatioMouseMove);
+    window.addEventListener("mouseup", onRatioMouseUp);
   };
 
-  const onMouseMove = (e: MouseEvent) => {
+  const onRatioMouseMove = (e: MouseEvent) => {
     if (!dragging() || !containerRef) return;
     const rect = containerRef.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -48,66 +48,98 @@ const Layout: Component = () => {
     setTopRatio(pct);
   };
 
-  const onMouseUp = () => {
+  const onRatioMouseUp = () => {
     setDragging(false);
-    window.removeEventListener("mousemove", onMouseMove);
-    window.removeEventListener("mouseup", onMouseUp);
+    window.removeEventListener("mousemove", onRatioMouseMove);
+    window.removeEventListener("mouseup", onRatioMouseUp);
     persistLayout.setTopRatio(topRatio());
   };
 
+  // ── Cross-section height resize ──
+  const onCsResizeMouseDown = (e: MouseEvent) => {
+    e.preventDefault();
+    setCsResizing(true);
+    csResizeLastY = e.clientY;
+    window.addEventListener("mousemove", onCsResizeMouseMove);
+    window.addEventListener("mouseup", onCsResizeMouseUp);
+  };
+
+  const onCsResizeMouseMove = (e: MouseEvent) => {
+    if (!csResizing()) return;
+    const dy = csResizeLastY - e.clientY;
+    csResizeLastY = e.clientY;
+    setCsHeight(h => Math.max(50, Math.min(250, h + dy)));
+  };
+
+  const onCsResizeMouseUp = () => {
+    setCsResizing(false);
+    window.removeEventListener("mousemove", onCsResizeMouseMove);
+    window.removeEventListener("mouseup", onCsResizeMouseUp);
+    persistLayout.setCsHeight(csHeight());
+  };
+
   onCleanup(() => {
-    window.removeEventListener("mousemove", onMouseMove);
-    window.removeEventListener("mouseup", onMouseUp);
+    window.removeEventListener("mousemove", onRatioMouseMove);
+    window.removeEventListener("mouseup", onRatioMouseUp);
+    window.removeEventListener("mousemove", onCsResizeMouseMove);
+    window.removeEventListener("mouseup", onCsResizeMouseUp);
   });
+
+  // Fixed-height knobs
+  const dragHandleH = 8;
+  const csResizeH = 6;
+  const csFixed = csVisible() ? csHeight() + csResizeH : 0;
+  const totalFixed = csFixed + dragHandleH;
 
   return (
     <div class="h-screen flex flex-col overflow-hidden">
       <Header leftOpen={leftOpen} rightOpen={rightOpen} onToggleLeft={toggleLeft} onToggleRight={toggleRight} csVisible={csVisible} onToggleCs={toggleCs} />
 
       <div class="flex flex-1 overflow-hidden min-h-0">
-        {/* Left sidebar */}
         <aside class={`${leftOpen() ? "w-56" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-r border-[#1a2e22]`}>
           <AccordionPanel />
         </aside>
 
-        {/* Center */}
         <div ref={containerRef} class="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {/* Fixed offset: cross-section (88px when visible) + drag handle (8px) */}
           {/* Top: circle preview */}
           <div class="overflow-auto bg-[#0a0f14] p-2"
-            style={{
-              height: csVisible()
-                ? `calc((100% - 96px) * ${topRatio()} / 100)`
-                : `calc((100% - 8px) * ${topRatio()} / 100)`
-            }}>
-            <SectionPreview />
+            style={{ height: `calc((100% - ${totalFixed}px) * ${topRatio()} / 100)` }}>
+            <SectionPreview onViewChange={onCircleViewChange} />
           </div>
 
-          {/* Cross-section bar — fixed 88px, between preview and drag handle */}
-          <CrossSection visible={csVisible()} onToggle={toggleCs} />
+          {/* CS resize handle */}
+          <Show when={csVisible()}>
+            <div
+              class={`h-1.5 flex-shrink-0 flex items-center justify-center cursor-row-resize select-none ${
+                csResizing() ? "bg-emerald-600" : "bg-gray-700 hover:bg-gray-600"
+              }`}
+              onMouseDown={onCsResizeMouseDown}
+            >
+              <div class="w-6 h-0.5 bg-gray-500 rounded" />
+            </div>
+          </Show>
 
-          {/* Drag handle */}
+          {/* Cross-section bar */}
+          <CrossSection visible={csVisible()} onToggle={toggleCs}
+            baseZoom={circleZoom()} basePanX={circlePanX()} height={csHeight()} />
+
+          {/* Top/bottom ratio drag handle */}
           <div
             class={`h-2 flex-shrink-0 flex items-center justify-center cursor-row-resize select-none transition-colors ${
               dragging() ? "bg-emerald-600" : "bg-gray-700 hover:bg-gray-600"
             }`}
-            onMouseDown={onMouseDown}
+            onMouseDown={onRatioMouseDown}
           >
             <div class="w-8 h-0.5 bg-gray-500 rounded" />
           </div>
 
           {/* Bottom: charts */}
           <div class="overflow-auto bg-[#0a0f14] p-2"
-            style={{
-              height: csVisible()
-                ? `calc((100% - 96px) * ${100 - topRatio()} / 100)`
-                : `calc((100% - 8px) * ${100 - topRatio()} / 100)`
-            }}>
+            style={{ height: `calc((100% - ${totalFixed}px) * ${100 - topRatio()} / 100)` }}>
             <VisualizationPanel />
           </div>
         </div>
 
-        {/* Right sidebar */}
         <aside class={`${rightOpen() ? "w-60" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-l border-[#1a2e22]`}>
           <ResultsPanel />
         </aside>

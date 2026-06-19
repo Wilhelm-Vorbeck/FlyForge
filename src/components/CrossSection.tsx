@@ -1,10 +1,18 @@
-import { Component, createSignal, Show } from "solid-js";
+import { Component, createSignal, Show, onCleanup } from "solid-js";
 import { useAppContext } from "../store";
 import { FlywheelType } from "../types";
 
 interface CrossSectionProps {
   visible: boolean;
   onToggle: () => void;
+  /** Base zoom from circle preview (horizontal sync) */
+  baseZoom?: number;
+  /** Base panX from circle preview (horizontal sync) */
+  basePanX?: number;
+  /** Height in px */
+  height: number;
+  /** Height resize start callback */
+  onHeightDragStart?: (e: MouseEvent) => void;
 }
 
 const CrossSection: Component<CrossSectionProps> = (props) => {
@@ -12,17 +20,21 @@ const CrossSection: Component<CrossSectionProps> = (props) => {
   const p = () => ctx.state().params;
   const ft = () => p().flywheel_type;
 
-  // ── Zoom & pan ──
-  const [zoom, setZoom] = createSignal(1);
-  const [panX, setPanX] = createSignal(0);
-  const [panY, setPanY] = createSignal(0);
+  // ── Local zoom & pan (offset from base) ──
+  const [localZoom, setLocalZoom] = createSignal(1);
+  const [localPanX, setLocalPanX] = createSignal(0);
+  const [localPanY, setLocalPanY] = createSignal(0);
   const [dragging, setDragging] = createSignal(false);
   let lastX = 0, lastY = 0;
+
+  // Effective zoom = base × local; effective panX = basePanX + localPanX
+  const effZoom = () => (props.baseZoom ?? 1) * localZoom();
+  const effPanX = () => (props.basePanX ?? 0) + localPanX();
 
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 1.1 : 0.9;
-    setZoom(z => Math.max(0.3, Math.min(5, z * delta)));
+    setLocalZoom(z => Math.max(0.3, Math.min(5, z * delta)));
   };
 
   const onMouseDown = (e: MouseEvent) => {
@@ -30,19 +42,35 @@ const CrossSection: Component<CrossSectionProps> = (props) => {
     setDragging(true);
     lastX = e.clientX;
     lastY = e.clientY;
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   };
 
   const onMouseMove = (e: MouseEvent) => {
     if (!dragging()) return;
-    setPanX(px => px + (e.clientX - lastX));
-    setPanY(py => py + (e.clientY - lastY));
+    setLocalPanX(px => px + (e.clientX - lastX));
+    setLocalPanY(py => py + (e.clientY - lastY));
     lastX = e.clientX;
     lastY = e.clientY;
   };
 
-  const onMouseUp = () => setDragging(false);
+  const onMouseUp = () => {
+    setDragging(false);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  };
 
-  const resetView = () => { setZoom(1); setPanX(0); setPanY(0); };
+  onCleanup(() => {
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  });
+
+  /** Reset local offsets → align to circle preview */
+  const resetAlign = () => {
+    setLocalZoom(1);
+    setLocalPanX(0);
+    setLocalPanY(0);
+  };
 
   // ── ViewBox ──
   const CS_PAD = 10;
@@ -51,9 +79,9 @@ const CrossSection: Component<CrossSectionProps> = (props) => {
   const CS_H = 80;
 
   const vb = () => {
-    const s = 130 / zoom();
-    const cx = -panX() / zoom();
-    const cy = -panY() / zoom();
+    const s = 130 / effZoom();
+    const cx = -effPanX() / effZoom();
+    const cy = -localPanY() / effZoom();
     return `${cx - s} ${cy - s} ${s * 2} ${s * 2}`;
   };
 
@@ -153,7 +181,7 @@ const CrossSection: Component<CrossSectionProps> = (props) => {
   return (
     <Show when={props.visible}>
       <div class="flex-shrink-0 border-y border-[#1a2e22] bg-[#0d1419] flex flex-col"
-        style={{ height: "88px" }}
+        style={{ height: `${props.height}px` }}
         onWheel={onWheel}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
@@ -164,9 +192,9 @@ const CrossSection: Component<CrossSectionProps> = (props) => {
         <div class="flex items-center justify-between px-2 py-0.5 flex-shrink-0" style={{ height: "16px" }}>
           <span class="text-[9px] text-gray-500">厚度剖面</span>
           <div class="flex items-center space-x-1.5">
-            <span class="text-[8px] text-gray-600">{(zoom() * 100).toFixed(0)}% | 滚轮·拖拽</span>
-            <button onClick={resetView}
-              class="text-[9px] px-1.5 py-0 rounded bg-[#1a2e22] text-emerald-400 hover:bg-[#2a4a32] transition-colors">⟲</button>
+            <span class="text-[8px] text-gray-600">{localZoom() !== 1 || localPanX() !== 0 ? "已偏移" : "已对齐"} | {(effZoom() * 100).toFixed(0)}%</span>
+            <button onClick={resetAlign}
+              class="text-[9px] px-1.5 py-0 rounded bg-[#1a2e22] text-emerald-400 hover:bg-[#2a4a32] transition-colors" title="对齐到截面预览">⟲</button>
             <button onClick={props.onToggle}
               class="text-[9px] px-1.5 py-0 rounded bg-[#1a2e22] text-gray-400 hover:bg-[#2a4a32] hover:text-white transition-colors" title="隐藏剖面图">▲</button>
           </div>
@@ -182,13 +210,10 @@ const CrossSection: Component<CrossSectionProps> = (props) => {
           </defs>
           <rect x="0" y="0" width={CS_W} height={CS_H} fill="url(#csGridP)" />
 
-          {/* Center line */}
           <line x1={CS_PAD} y1={CS_H/2} x2={CS_W - CS_PAD} y2={CS_H/2} stroke="#334155" stroke-width="0.5" />
 
-          {/* Profile path */}
           <path d={pathStr()} fill="rgba(59,130,246,0.2)" stroke="#3B82F6" stroke-width="1" />
 
-          {/* Layer boundaries (multi-layer only) */}
           <Show when={ft() === FlywheelType.MultiLayerComposite}>
             {layerLines()?.map(l => (
               <line x1={l.x} y1={CS_H/2 - 38} x2={l.x} y2={CS_H/2 + 38}
@@ -196,7 +221,6 @@ const CrossSection: Component<CrossSectionProps> = (props) => {
             ))}
           </Show>
 
-          {/* Labels */}
           <text x={CS_PAD + 2} y={CS_H/2 - 3} fill="#10B981" font-size="8">Ri</text>
           <text x={CS_W - CS_PAD - 20} y={CS_H/2 - 3} fill="#3B82F6" font-size="8">Ro</text>
         </svg>

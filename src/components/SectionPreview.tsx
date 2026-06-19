@@ -1,8 +1,12 @@
-import { Component, createSignal, Show } from "solid-js";
+import { Component, createSignal, Show, onCleanup } from "solid-js";
 import { useAppContext } from "../store";
 import { FlywheelType } from "../types";
 
-const SectionPreview: Component = () => {
+interface SectionPreviewProps {
+  onViewChange?: (zoom: number, panX: number, panY: number) => void;
+}
+
+const SectionPreview: Component<SectionPreviewProps> = (props) => {
   const ctx = useAppContext();
   const p = () => ctx.state().params;
   const ft = () => p().flywheel_type;
@@ -13,10 +17,13 @@ const SectionPreview: Component = () => {
   const [dragging, setDragging] = createSignal(false);
   let lastX = 0, lastY = 0;
 
+  const notifyView = () => props.onViewChange?.(zoom(), panX(), panY());
+
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 1.1 : 0.9;
     setZoom(z => Math.max(0.2, Math.min(5, z * delta)));
+    notifyView();
   };
 
   const onMouseDown = (e: MouseEvent) => {
@@ -24,6 +31,8 @@ const SectionPreview: Component = () => {
     setDragging(true);
     lastX = e.clientX;
     lastY = e.clientY;
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   };
 
   const onMouseMove = (e: MouseEvent) => {
@@ -32,9 +41,19 @@ const SectionPreview: Component = () => {
     setPanY(py => py + (e.clientY - lastY));
     lastX = e.clientX;
     lastY = e.clientY;
+    notifyView();
   };
 
-  const onMouseUp = () => setDragging(false);
+  const onMouseUp = () => {
+    setDragging(false);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  };
+
+  onCleanup(() => {
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  });
 
   const maxR = () => Math.max(p().r_o, 1);
   const rScale = () => Math.min(120 / maxR(), 2);
@@ -97,7 +116,6 @@ const SectionPreview: Component = () => {
         </text>
       </svg>
 
-      {/* Color legend */}
       <div class="absolute top-2 right-2 bg-[#0d1419]/90 border border-[#1a2e22] rounded px-2 py-1.5 space-y-1">
         <div class="flex items-center space-x-1.5">
           <div class="w-3 h-0.5 bg-blue-500 rounded" />
@@ -117,9 +135,8 @@ const SectionPreview: Component = () => {
         </Show>
       </div>
 
-      {/* Zoom */}
       <div class="absolute bottom-2 right-2 flex items-center space-x-1.5">
-        <button onClick={() => { setZoom(1); setPanX(0); setPanY(0); }}
+        <button onClick={() => { setZoom(1); setPanX(0); setPanY(0); notifyView(); }}
           class="text-[9px] px-2 py-0.5 rounded bg-[#1a2e22] text-emerald-400 hover:bg-[#2a4a32] hover:text-white transition-colors">⟲</button>
         <span class="text-[9px] text-gray-500 bg-[#0d1419]/80 px-1.5 py-0.5 rounded">
           {(zoom() * 100).toFixed(0)}% | 滚轮缩放·拖拽

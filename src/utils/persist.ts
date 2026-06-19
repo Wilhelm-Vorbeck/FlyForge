@@ -36,6 +36,9 @@ export const persistLayout = {
 
   getCsVisible: () => get("csVisible", true),
   setCsVisible: (v: boolean) => set("csVisible", v),
+
+  getCsHeight: () => get("csHeight", 88),
+  setCsHeight: (v: number) => set("csHeight", v),
 };
 
 // ── Last used params ──
