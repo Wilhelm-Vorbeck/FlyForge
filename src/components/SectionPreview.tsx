@@ -143,7 +143,7 @@ const SectionPreview: Component = () => {
   };
 
   return (
-    <div class="w-full h-full select-none"
+    <div class="w-full h-full select-none flex flex-col overflow-y-auto"
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
@@ -151,8 +151,9 @@ const SectionPreview: Component = () => {
       onMouseLeave={onMouseUp}
       style={{ cursor: dragging() ? "grabbing" : "grab" }}
     >
-      <svg width="100%" height="100%" viewBox={vb()} class="bg-[#0a0f14] rounded"
-        style={{ "min-height": "180px" }}>
+      {/* SVG container with legend overlay */}
+      <div class="relative flex-shrink-0" style={{ height: needsCrossSection() ? "150px" : "100%", "min-height": "140px" }}>
+      <svg width="100%" height="100%" viewBox={vb()} class="bg-[#0a0f14] rounded">
         <defs>
           <pattern id="smallGrid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse">
             <path d={`M ${gridSize} 0 L 0 0 0 ${gridSize}`} fill="none" stroke="#1e293b" stroke-width="0.5" />
@@ -202,22 +203,6 @@ const SectionPreview: Component = () => {
         </text>
       </svg>
 
-      {/* ── Cross-section view ── */}
-      <Show when={needsCrossSection()}>
-        <div class="mt-1 border border-[#1a2e22] rounded bg-[#0d1419] px-2 py-1" style={{ "min-height": "100px" }}>
-          <div class="text-[9px] text-gray-500 mb-0.5">厚度剖面</div>
-          <svg width="100%" height="80" viewBox={`0 0 ${CS_W} ${CS_H}`}>
-            {/* Center line */}
-            <line x1={CS_PAD} y1={CS_H/2} x2={CS_W - CS_PAD} y2={CS_H/2} stroke="#334155" stroke-width="0.5" />
-            {/* Cross-section fill */}
-            <path d={crossSectionPointsStr()} fill="rgba(59,130,246,0.2)" stroke="#3B82F6" stroke-width="1" />
-            {/* Labels */}
-            <text x={CS_PAD + 2} y={CS_H/2 - 2} fill="#10B981" font-size="8">Ri</text>
-            <text x={CS_W - CS_PAD - 20} y={CS_H/2 - 2} fill="#3B82F6" font-size="8">Ro</text>
-          </svg>
-        </div>
-      </Show>
-
       {/* Color legend */}
       <div class="absolute top-2 right-2 bg-[#0d1419]/90 border border-[#1a2e22] rounded px-2 py-1.5 space-y-1">
         <div class="flex items-center space-x-1.5">
@@ -248,6 +233,23 @@ const SectionPreview: Component = () => {
           {(zoom() * 100).toFixed(0)}% | 滚轮缩放·拖拽
         </span>
       </div>
+      </div>{/* end SVG wrapper */}
+
+      {/* ── Cross-section view ── */}
+      <Show when={needsCrossSection()}>
+        <div class="flex-shrink-0 mt-1 border border-[#1a2e22] rounded bg-[#0d1419] px-2 py-1" style={{ "min-height": "70px" }}>
+          <div class="text-[9px] text-gray-500 mb-0.5">厚度剖面</div>
+          <svg width="100%" viewBox={`0 0 ${CS_W} ${CS_H}`} style={{ height: "60px" }}>
+            {/* Center line */}
+            <line x1={CS_PAD} y1={CS_H/2} x2={CS_W - CS_PAD} y2={CS_H/2} stroke="#334155" stroke-width="0.5" />
+            {/* Cross-section fill */}
+            <path d={crossSectionPointsStr()} fill="rgba(59,130,246,0.2)" stroke="#3B82F6" stroke-width="1" />
+            {/* Labels */}
+            <text x={CS_PAD + 2} y={CS_H/2 - 2} fill="#10B981" font-size="8">Ri</text>
+            <text x={CS_W - CS_PAD - 20} y={CS_H/2 - 2} fill="#3B82F6" font-size="8">Ro</text>
+          </svg>
+        </div>
+      </Show>
     </div>
   );
 };
