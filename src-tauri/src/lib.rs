@@ -1,6 +1,6 @@
 use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_params_json, import_params_json};
 use flyforge_core::fatigue::{estimate_fatigue_life, sn_curve};
-use flyforge_core::sensitivity::{run_sweep, SweepParam, SweepMetric, SensitivityPoint};
+use flyforge_core::sensitivity::{run_sweep, SweepParam, SweepMetric};
 use flyforge_core::thermal::{thermal_stress_annular, temperature_corrected_yield, combine_stress};
 use flyforge_core::solver::SolverRegistry;
 use flyforge_core::types::{FlywheelParams, FlywheelSimulation, Material, materials};
@@ -213,7 +213,7 @@ fn compute_thermal_stress(
         sigma_vm_therm_only[i] = (sr * sr + sh * sh - sr * sh).sqrt();
     }
 
-    let max_idx = combined.sigma_vm.iter().enumerate()
+    let (max_idx, _max_val) = combined.sigma_vm.iter().enumerate()
         .fold((0usize, f64::NEG_INFINITY), |(mi, mv), (i, &v)| if v > mv { (i, v) } else { (mi, mv) });
 
     Ok(ThermalStressDto {
