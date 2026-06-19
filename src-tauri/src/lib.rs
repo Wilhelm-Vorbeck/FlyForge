@@ -213,8 +213,9 @@ fn compute_thermal_stress(
         sigma_vm_therm_only[i] = (sr * sr + sh * sh - sr * sh).sqrt();
     }
 
-    let (max_idx, _max_val) = combined.sigma_vm.iter().enumerate()
+    let (max_idx, max_val) = combined.sigma_vm.iter().enumerate()
         .fold((0usize, f64::NEG_INFINITY), |(mi, mv), (i, &v)| if v > mv { (i, v) } else { (mi, mv) });
+    let max_location = combined.r[max_idx];
 
     Ok(ThermalStressDto {
         r: combined.r.clone(),
@@ -222,8 +223,8 @@ fn compute_thermal_stress(
         sigma_vm_cent: sim.stress_rated.sigma_vm.clone(),
         sigma_vm_therm: sigma_vm_therm_only,
         corrected_yield,
-        max_stress: combined.sigma_vm[max_idx],
-        max_stress_location: combined.r[max_idx],
+        max_stress: max_val,
+        max_stress_location: max_location,
     })
 }
 
