@@ -57,33 +57,57 @@ pub fn mass_inertia_annular(params: &FlywheelParams, material: &Material) -> Ine
 pub fn mass_inertia_multi_layer(params: &FlywheelParams, material: &Material) -> InertiaResult {
     let r_o = params.r_o / 1000.0;
     let r_i = params.r_i / 1000.0;
-    let r_hub = params.r_hub / 1000.0;
-    let t_rim = params.thickness / 1000.0;
-    let t_hub = params.hub_thickness / 1000.0;
-    let t_web = t_rim * 0.4;
 
-    // Hub region: r_i to r_hub, thickness = t_hub
-    let vol_hub = PI * (r_hub * r_hub - r_i * r_i) * t_hub;
-    let mass_hub = material.density * vol_hub;
-    let j_hub = 0.5 * mass_hub * (r_hub * r_hub + r_i * r_i);
+    if params.layer_configs.is_empty() {
+        // Legacy 3-layer fallback
+        let r_hub = params.r_hub / 1000.0;
+        let t_rim = params.thickness / 1000.0;
+        let t_hub = params.hub_thickness / 1000.0;
+        let t_web = t_rim * 0.4;
 
-    // Web region: r_hub to r_rim_inner (approx 0.85*r_o), thickness = t_web
-    let r_rim_inner = r_o * 0.85;
-    let vol_web = PI * (r_rim_inner * r_rim_inner - r_hub * r_hub) * t_web;
-    let mass_web = material.density * vol_web;
-    let j_web = 0.5 * mass_web * (r_rim_inner * r_rim_inner + r_hub * r_hub);
+        let vol_hub = PI * (r_hub * r_hub - r_i * r_i) * t_hub;
+        let mass_hub = material.density * vol_hub;
+        let j_hub = 0.5 * mass_hub * (r_hub * r_hub + r_i * r_i);
 
-    // Rim region: r_rim_inner to r_o, thickness = t_rim
-    let vol_rim = PI * (r_o * r_o - r_rim_inner * r_rim_inner) * t_rim;
-    let mass_rim = material.density * vol_rim;
-    let j_rim = 0.5 * mass_rim * (r_o * r_o + r_rim_inner * r_rim_inner);
+        let r_rim_inner = r_o * 0.85;
+        let vol_web = PI * (r_rim_inner * r_rim_inner - r_hub * r_hub) * t_web;
+        let mass_web = material.density * vol_web;
+        let j_web = 0.5 * mass_web * (r_rim_inner * r_rim_inner + r_hub * r_hub);
 
-    let total_mass = mass_hub + mass_web + mass_rim;
-    let total_inertia = j_hub + j_web + j_rim;
+        let vol_rim = PI * (r_o * r_o - r_rim_inner * r_rim_inner) * t_rim;
+        let mass_rim = material.density * vol_rim;
+        let j_rim = 0.5 * mass_rim * (r_o * r_o + r_rim_inner * r_rim_inner);
 
-    InertiaResult {
-        mass: total_mass,
-        moment_of_inertia: total_inertia,
+        let total_mass = mass_hub + mass_web + mass_rim;
+        let total_inertia = j_hub + j_web + j_rim;
+
+        InertiaResult {
+            mass: total_mass,
+            moment_of_inertia: total_inertia,
+        }
+    } else {
+        // Config-driven: integrate each layer with its own material
+        // Currently uses single material for simplicity; layer-specific materials
+        // would require material lookup — future enhancement
+        let mut total_mass = 0.0;
+        let mut total_inertia = 0.0;
+
+        let mut r_inner = r_i;
+        for layer in &params.layer_configs {
+            let r_outer = (layer.outer_radius / 1000.0).min(r_o);
+            let t = layer.thickness / 1000.0;
+            let vol = PI * (r_outer * r_outer - r_inner * r_inner) * t;
+            let mass = material.density * vol;
+            let j = 0.5 * mass * (r_outer * r_outer + r_inner * r_inner);
+            total_mass += mass;
+            total_inertia += j;
+            r_inner = r_outer;
+        }
+
+        InertiaResult {
+            mass: total_mass,
+            moment_of_inertia: total_inertia,
+        }
     }
 }
 

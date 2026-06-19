@@ -101,17 +101,31 @@ const SectionPreview: Component = () => {
         break;
       }
       case FlywheelType.MultiLayerComposite: {
-        // Stepped: hub -> web -> rim
-        const rHub = p().r_hub;
-        const rWeb = ro * 0.85;
-        const tWeb = t * 0.4;
-        const rSteps = [ri, rHub, rWeb, ro];
-        const tSteps = [th, th, tWeb, t];
-        for (let s = 0; s < rSteps.length - 1; s++) {
-          const subN = Math.max(5, Math.floor(n / 3));
-          for (let i = 0; i <= subN; i++) {
-            const r = rSteps[s] + (rSteps[s + 1] - rSteps[s]) * (i / subN);
-            points.push({ x: cxToX(r), yTop: thicknessToY(tSteps[s]), yBot: CS_H - thicknessToY(tSteps[s]) });
+        const layers = p().layer_configs;
+        if (layers && layers.length > 0) {
+          // Config-driven layers
+          const lrs = [ri, ...layers.map((l) => l.outer_radius)];
+          const lts = layers.map((l) => l.thickness);
+          for (let s = 0; s < lts.length; s++) {
+            const subN = Math.max(8, Math.floor(n / lts.length));
+            for (let i = 0; i <= subN; i++) {
+              const r = lrs[s] + (lrs[s + 1] - lrs[s]) * (i / subN);
+              points.push({ x: cxToX(r), yTop: thicknessToY(lts[s]), yBot: CS_H - thicknessToY(lts[s]) });
+            }
+          }
+        } else {
+          // Legacy fallback: hub -> web -> rim
+          const rHub = p().r_hub;
+          const rWeb = ro * 0.85;
+          const tWeb = t * 0.4;
+          const rSteps = [ri, rHub, rWeb, ro];
+          const tSteps = [th, th, tWeb, t];
+          for (let s = 0; s < rSteps.length - 1; s++) {
+            const subN = Math.max(5, Math.floor(n / 3));
+            for (let i = 0; i <= subN; i++) {
+              const r = rSteps[s] + (rSteps[s + 1] - rSteps[s]) * (i / subN);
+              points.push({ x: cxToX(r), yTop: thicknessToY(tSteps[s]), yBot: CS_H - thicknessToY(tSteps[s]) });
+            }
           }
         }
         break;

@@ -95,13 +95,13 @@ export const PRESETS: Preset[] = [
   {
     name: "Multi-Layer Heavy-Duty",
     name_zh: "多层重型飞轮",
-    description: "重型工业储能",
+    description: "钢芯+碳纤维复合储能",
     params: {
       r_o: 250,
       r_i: 50,
-      thickness: 60,
+      thickness: 40,
       r_hub: 75,
-      hub_thickness: 100,
+      hub_thickness: 90,
       rpm_rated: 2000,
       rpm_max: 3000,
       rpm_min: 1000,
@@ -111,6 +111,11 @@ export const PRESETS: Preset[] = [
       safety_factor_yield: 1.5,
       safety_factor_fatigue: 1.5,
       safety_factor_burst: 2.0,
+      layer_configs: [
+        { material_id: "aisi_4140", thickness: 90, outer_radius: 75 },
+        { material_id: "maraging_18ni", thickness: 40, outer_radius: 180 },
+        { material_id: "carbon_fiber_t700", thickness: 40, outer_radius: 250 },
+      ],
     },
   },
   {

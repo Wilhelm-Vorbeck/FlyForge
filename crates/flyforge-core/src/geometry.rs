@@ -149,41 +149,54 @@ pub fn section_constant_strength(params: &FlywheelParams) -> FlywheelSection {
     }
 }
 
-/// Compute section geometry for a multi-layer composite flywheel (rim + web + hub).
+/// Compute section geometry for a multi-layer composite flywheel.
 ///
-/// Three regions:
-/// - Hub: r_hub_inner to r_hub_outer, thickness = hub_thickness
-/// - Web: r_hub_outer to r_rim_inner, thickness = web_thickness (thinner)
-/// - Rim: r_rim_inner to r_o, thickness = rim_thickness
+/// When `params.layer_configs` is populated, layers are defined explicitly:
+/// each layer has a material, thickness, and outer radius boundary.
+/// When empty, falls back to legacy 3-layer hardcoded model (hub/web/rim).
 pub fn section_multi_layer(params: &FlywheelParams) -> FlywheelSection {
     let r_o = params.r_o;
     let r_i = params.r_i;
-    let r_hub = params.r_hub;
-    let t_rim = params.thickness;
-    let t_hub = params.hub_thickness;
     let n = params.n_points.max(2);
-
-    // Web thickness is thinner than rim (typical: 30-50% of rim)
-    let t_web = t_rim * 0.4;
 
     let r_points: Vec<f64> = (0..n)
         .map(|i| r_i + (r_o - r_i) * i as f64 / (n as f64 - 1.0))
         .collect();
 
-    let t_points: Vec<f64> = r_points
-        .iter()
-        .map(|&r| {
-            if r <= r_hub {
-                t_hub
-            } else if r <= r_o * 0.85 {
-                // Web region - transition from hub to rim
-                let web_ratio = (r - r_hub) / (r_o * 0.85 - r_hub).max(1.0);
-                t_hub - (t_hub - t_web) * web_ratio
-            } else {
-                t_rim
-            }
-        })
-        .collect();
+    let t_points: Vec<f64> = if params.layer_configs.is_empty() {
+        // Legacy 3-layer fallback
+        let r_hub = params.r_hub;
+        let t_rim = params.thickness;
+        let t_hub = params.hub_thickness;
+        let t_web = t_rim * 0.4;
+        r_points
+            .iter()
+            .map(|&r| {
+                if r <= r_hub {
+                    t_hub
+                } else if r <= r_o * 0.85 {
+                    let web_ratio = (r - r_hub) / (r_o * 0.85 - r_hub).max(1.0);
+                    t_hub - (t_hub - t_web) * web_ratio
+                } else {
+                    t_rim
+                }
+            })
+            .collect()
+    } else {
+        // Config-driven: each layer has outer_radius and thickness
+        r_points
+            .iter()
+            .map(|&r| {
+                for layer in &params.layer_configs {
+                    if r <= layer.outer_radius {
+                        return layer.thickness;
+                    }
+                }
+                // Beyond last layer → use last layer thickness
+                params.layer_configs.last().map(|l| l.thickness).unwrap_or(params.thickness)
+            })
+            .collect()
+    };
 
     let volume = numerical_volume(&r_points, &t_points);
     let area = PI * (r_o * r_o - r_i * r_i);
