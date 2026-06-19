@@ -1,5 +1,5 @@
 use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_params_json, import_params_json};
-use flyforge_core::fatigue::estimate_fatigue_life;
+use flyforge_core::fatigue::{estimate_fatigue_life, sn_curve};
 use flyforge_core::sensitivity::{run_sweep, SweepParam, SweepMetric, SensitivityPoint};
 use flyforge_core::thermal::{thermal_stress_annular, temperature_corrected_yield, combine_stress};
 use flyforge_core::solver::SolverRegistry;
@@ -227,6 +227,36 @@ fn compute_thermal_stress(
     })
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SNCurvePointDto {
+    pub cycles: f64,
+    pub stress_amplitude: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SNCurveDto {
+    pub curve: Vec<SNCurvePointDto>,
+    pub fatigue_limit: f64,
+    pub operating_stress: f64,
+    pub operating_cycles: f64,
+    pub material_name: String,
+}
+
+#[tauri::command]
+fn get_sn_curve(material: Material, operating_stress: f64) -> SNCurveDto {
+    let data = sn_curve(&material, operating_stress);
+    SNCurveDto {
+        curve: data.curve.into_iter().map(|p| SNCurvePointDto {
+            cycles: p.cycles,
+            stress_amplitude: p.stress_amplitude,
+        }).collect(),
+        fatigue_limit: data.fatigue_limit,
+        operating_stress: data.operating_stress,
+        operating_cycles: data.operating_cycles,
+        material_name: data.material_name,
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -244,6 +274,7 @@ pub fn run() {
             get_fatigue_estimate,
             run_sensitivity_sweep,
             compute_thermal_stress,
+            get_sn_curve,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

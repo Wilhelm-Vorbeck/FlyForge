@@ -112,6 +112,72 @@ pub fn estimate_fatigue_life(
     }
 }
 
+/// S-N curve data point
+#[derive(Debug, Clone)]
+pub struct SNCurvePoint {
+    /// Number of cycles (N)
+    pub cycles: f64,
+    /// Stress amplitude (MPa)
+    pub stress_amplitude: f64,
+}
+
+/// S-N curve with current operating point annotation
+#[derive(Debug, Clone)]
+pub struct SNCurveData {
+    /// S-N curve points (log-spaced from 10³ to 10⁹)
+    pub curve: Vec<SNCurvePoint>,
+    /// Fatigue limit horizontal line (MPa)
+    pub fatigue_limit: f64,
+    /// Current operating stress amplitude (MPa)
+    pub operating_stress: f64,
+    /// Current operating cycles (N)
+    pub operating_cycles: f64,
+    /// Material label
+    pub material_name: String,
+}
+
+/// Generate S-N curve data for a material.
+///
+/// Uses the Basquin equation σ_a = C · N^{-b} to generate log-spaced
+/// curve points from 1e3 to 1e9 cycles.
+pub fn sn_curve(
+    material: &Material,
+    operating_stress: f64,
+) -> SNCurveData {
+    let params = sn_params(material);
+    let mut curve = Vec::new();
+
+    // Generate 50 log-spaced points from 10³ to 10⁹
+    let n_start = 3.0;   // log10(1000)
+    let n_end = 9.0;     // log10(1e9)
+    let n_points = 50;
+
+    for i in 0..=n_points {
+        let log_n = n_start + (n_end - n_start) * i as f64 / n_points as f64;
+        let cycles = 10.0_f64.powf(log_n);
+        let stress = params.c * cycles.powf(-params.b);
+        curve.push(SNCurvePoint {
+            cycles,
+            stress_amplitude: stress,
+        });
+    }
+
+    // Operating cycles: N = (C / σ_a)^(1/b)
+    let operating_cycles = if operating_stress > 0.0 && operating_stress >= material.fatigue_limit {
+        (params.c / operating_stress).powf(1.0 / params.b)
+    } else {
+        f64::INFINITY
+    };
+
+    SNCurveData {
+        curve,
+        fatigue_limit: material.fatigue_limit,
+        operating_stress,
+        operating_cycles,
+        material_name: material.name_zh.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

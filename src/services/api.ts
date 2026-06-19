@@ -151,3 +151,16 @@ export async function computeThermalStress(
 }> {
   return await invoke("compute_thermal_stress", { params, material });
 }
+
+/**
+ * Get S-N curve data
+ */
+export async function getSNCurve(material: Material, operatingStress: number): Promise<{
+  curve: { cycles: number; stress_amplitude: number }[];
+  fatigue_limit: number;
+  operating_stress: number;
+  operating_cycles: number;
+  material_name: string;
+}> {
+  return await invoke("get_sn_curve", { material, operatingStress });
+}

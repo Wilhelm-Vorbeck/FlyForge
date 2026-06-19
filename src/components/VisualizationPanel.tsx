@@ -1,7 +1,7 @@
 import { Component, Show, createSignal, createResource } from "solid-js";
 import { useAppContext } from "../store";
 import { FlywheelSimulation } from "../types";
-import { runSensitivitySweep, computeThermalStress } from "../services/api";
+import { runSensitivitySweep, computeThermalStress, getSNCurve } from "../services/api";
 
 // ============================================================
 // Nice tick generator
@@ -601,14 +601,112 @@ const ThermalChart: Component<{ s: FlywheelSimulation }> = (props) => {
 };
 
 // ============================================================
+// S-N Curve Chart
+// ============================================================
+const SNChart: Component<{ s: FlywheelSimulation }> = (props) => {
+  const [snData] = createResource(
+    () => ({ mat: props.s.material, stress: props.s.max_stress_rated }),
+    async ({ mat, stress }) => {
+      return await getSNCurve(mat, stress);
+    },
+  );
+
+  const data = () => {
+    const sd = snData();
+    if (!sd || sd.curve.length === 0) return null;
+
+    // Log-scale X axis (cycles), linear Y (stress)
+    const xMin = Math.log10(sd.curve[0].cycles);
+    const xMax = Math.log10(sd.curve[sd.curve.length - 1].cycles);
+    const yMax = Math.max(sd.fatigue_limit, sd.operating_stress !== Infinity ? sd.operating_stress : 0, ...sd.curve.map(p => p.stress_amplitude)) * 1.2;
+    const yMin = 0;
+
+    const xRange = W - 2 * PAD, yRange = H - 2 * PAD;
+    const sxLog = (logN: number) => PAD + ((logN - xMin) / (xMax - xMin)) * xRange;
+    const sy = (y: number) => H - PAD - (y / yMax) * yRange;
+    const xVal = (svx: number) => 10.0 ** (xMin + ((svx - PAD) / xRange) * (xMax - xMin));
+    const yVal = (svy: number) => (1 - (svy - PAD) / yRange) * yMax;
+
+    let specialX: number[] = [];
+    let specialY: number[] = [sd.fatigue_limit];
+    if (sd.operating_stress > 0 && sd.operating_cycles !== Infinity) {
+      specialX.push(Math.log10(sd.operating_cycles));
+      specialY.push(sd.operating_stress);
+    }
+
+    return { xMin, xMax, yMin, yMax, xLabel: "循环次数 N", yLabel: "应力幅",
+      xTicks: [3,4,5,6,7,8,9].filter(t => t >= xMin && t <= xMax),
+      yTicks: niceTicks(yMin, yMax, 6),
+      specialX, specialY,
+      xFormat: (v: number) => `10^{${v.toFixed(0)}}`,
+      yFormat: (v: number) => v.toFixed(0) + "MPa",
+      xVal: (svx: number) => 10.0 ** (xMin + ((svx - PAD) / xRange) * (xMax - xMin)),
+      yVal,
+      // sx takes raw cycles, converts to log10 internally
+      sx: (cycles: number) => sxLog(Math.log10(cycles)),
+      sy };
+  };
+
+  const cc = ["#3B82F6", "#F59E0B", "#EF4444"];
+  const cl = ["S-N曲线", "疲劳极限", "工作点"];
+
+  const renderLines = (sx: (x: number) => number, sy: (y: number) => number) => {
+    const sd = snData();
+    if (!sd) return null;
+
+    const curvePath = sd.curve.map((p, i) =>
+      `${i === 0 ? "M" : "L"}${sx(p.cycles)},${sy(p.stress_amplitude)}`).join(" ");
+
+    return <>
+      <path d={curvePath} fill="none" stroke="#3B82F6" stroke-width="2" />
+      {/* Fatigue limit horizontal line */}
+      <line x1={sx(sd.curve[0].cycles)} y1={sy(sd.fatigue_limit)} x2={sx(sd.curve[sd.curve.length-1].cycles)} y2={sy(sd.fatigue_limit)}
+        stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.8" />
+      <text x={sx(sd.curve[10].cycles)} y={sy(sd.fatigue_limit) - 4} fill="#F59E0B" font-size="9" text-anchor="middle">
+        σ_f = {sd.fatigue_limit.toFixed(0)} MPa
+      </text>
+      {/* Operating point */}
+      {sd.operating_stress > 0 && sd.operating_cycles !== Infinity && (
+        <circle cx={sx(sd.operating_cycles)} cy={sy(sd.operating_stress)} r="5" fill="#EF4444" stroke="#fff" stroke-width="1" />
+      )}
+    </>;
+  };
+
+  const renderValues = (ox: number, oy: number, x: number, _l: string[], _c: string[]) => {
+    const sd = snData();
+    if (!sd) return null;
+    const interp = () => {
+      if (x <= sd.curve[0].cycles) return sd.curve[0].stress_amplitude;
+      for (let i = 1; i < sd.curve.length; i++)
+        if (x <= sd.curve[i].cycles) {
+          const f = Math.log(x / sd.curve[i-1].cycles) / Math.log(sd.curve[i].cycles / sd.curve[i-1].cycles);
+          return sd.curve[i-1].stress_amplitude + f * (sd.curve[i].stress_amplitude - sd.curve[i-1].stress_amplitude);
+        }
+      return sd.curve[sd.curve.length-1].stress_amplitude;
+    };
+    const v = interp();
+    const exp = Math.floor(Math.log10(x));
+    return <text x={ox} y={oy + 14} fill="#3B82F6" font-size="9">σ_a = {v.toFixed(0)} MPa @ N≈10^{exp}</text>;
+  };
+
+  return (
+    <Show when={snData()}
+      fallback={<div class="flex-1 flex items-center justify-center text-gray-500 text-[10px]">生成中...</div>}>
+      <InteractiveChart data={data} renderLines={renderLines} renderValues={renderValues}
+        curveCount={1} curveLabels={cl} curveColors={cc} />
+    </Show>
+  );
+};
+
+// ============================================================
 // Main Panel
 // ============================================================
 const VisualizationPanel: Component = () => {
   const ctx = useAppContext();
   const sim = () => ctx.state().simulation;
-  const [activeChart, setActiveChart] = createSignal<"stress" | "rpm" | "energy" | "sensitivity" | "thermal">("stress");
+  const [activeChart, setActiveChart] = createSignal<"stress" | "rpm" | "energy" | "sensitivity" | "thermal" | "sn">("stress");
 
-  const chartBtn = (id: "stress" | "rpm" | "energy" | "sensitivity" | "thermal", label: string) => (
+  const chartBtn = (id: "stress" | "rpm" | "energy" | "sensitivity" | "thermal" | "sn", label: string) => (
     <button onClick={() => setActiveChart(id)}
       class={`px-2.5 py-1 text-xs rounded transition-colors ${
         activeChart() === id ? "bg-emerald-600 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"
@@ -625,6 +723,7 @@ const VisualizationPanel: Component = () => {
           {chartBtn("energy", "能量")}
           {chartBtn("sensitivity", "灵敏度")}
           {chartBtn("thermal", "热应力")}
+          {chartBtn("sn", "疲劳S-N")}
         </div>
       </div>
       <Show when={sim()} fallback={
@@ -645,6 +744,7 @@ const VisualizationPanel: Component = () => {
             {activeChart() === "energy" && <EnergyChart s={sim()!} />}
             {activeChart() === "sensitivity" && <SensitivityChart s={sim()!} />}
             {activeChart() === "thermal" && <ThermalChart s={sim()!} />}
+            {activeChart() === "sn" && <SNChart s={sim()!} />}
           </div>
         </div>
       </Show>
