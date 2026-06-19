@@ -389,6 +389,17 @@ pub mod materials {
 // Flywheel Design Parameters
 // ============================================================
 
+/// Layer configuration for multi-layer composite flywheels
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LayerConfig {
+    /// Material ID (from built-in or custom materials)
+    pub material_id: String,
+    /// Layer thickness (mm)
+    pub thickness: f64,
+    /// Outer radius of this layer (mm) — marks the boundary
+    pub outer_radius: f64,
+}
+
 /// Flywheel design parameters.
 ///
 /// Corresponds to CamForge's CamParams - the core data model for user-adjustable design variables.
@@ -405,6 +416,11 @@ pub struct FlywheelParams {
     pub r_hub: f64,
     /// Hub thickness (mm)
     pub hub_thickness: f64,
+
+    // --- Multi-layer config (only for MultiLayerComposite) ---
+    /// Layer configurations for multi-layer composite flywheels
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub layer_configs: Vec<LayerConfig>,
 
     // --- Operating Parameters ---
     /// Rated speed (rpm)
@@ -466,6 +482,7 @@ impl Default for FlywheelParams {
             n_points: 100,
             flywheel_type: FlywheelType::AnnularRing,
             material_id: default_material_id(),
+            layer_configs: vec![],
             safety_factor_yield: default_safety_factor(),
             safety_factor_fatigue: default_safety_factor(),
             safety_factor_burst: default_burst_safety(),

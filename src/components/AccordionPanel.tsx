@@ -1,9 +1,10 @@
-import { Component, createSignal, For, createEffect } from "solid-js";
+import { Component, createSignal, For, createEffect, Show } from "solid-js";
 import { useAppContext } from "../store";
 import { FlywheelType, FlywheelTypeNames } from "../types";
 import GeometryTab from "./tabs/GeometryTab";
 import MaterialTab from "./tabs/MaterialTab";
 import OperatingTab from "./tabs/OperatingTab";
+import LayerEditor from "./tabs/LayerEditor";
 import PresetSelector from "./PresetSelector";
 import { runSimulationWithState } from "../services/api";
 
@@ -81,6 +82,13 @@ const AccordionPanel: Component = () => {
             </div>
           )}
         </For>
+
+        {/* Layer editor — only for MultiLayerComposite */}
+        <Show when={ctx.state().params.flywheel_type === FlywheelType.MultiLayerComposite}>
+          <div class="px-3 py-2 bg-[#0d1419]/60 border-t border-[#1a2e22]">
+            <LayerEditor />
+          </div>
+        </Show>
       </div>
     </div>
   );

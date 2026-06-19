@@ -37,6 +37,15 @@ export interface Material {
 }
 
 /**
+ * Multi-layer composite layer configuration
+ */
+export interface LayerConfig {
+  material_id: string;
+  thickness: number; // mm
+  outer_radius: number; // mm — outer boundary of this layer
+}
+
+/**
  * Flywheel design parameters interface
  */
 export interface FlywheelParams {
@@ -54,6 +63,7 @@ export interface FlywheelParams {
   safety_factor_yield: number;
   safety_factor_fatigue: number;
   safety_factor_burst: number;
+  layer_configs?: LayerConfig[]; // Multi-layer composite only
 }
 
 /**
