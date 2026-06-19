@@ -40,16 +40,25 @@ const NumberInput: Component<NumberInputProps> = (props) => {
     setText(String(clamped));
   };
 
+  // Determine decimal precision from step (e.g., step=0.1 → 1dp, step=1 → 0dp)
+  const decimals = Math.max(0, Math.round(-Math.log10(step)));
+
+  // Round to eliminate floating point noise
+  const round = (n: number) => {
+    const m = Math.pow(10, decimals);
+    return Math.round(n * m) / m;
+  };
+
   // Long press rapid fire
   let repeatTimer: ReturnType<typeof setInterval> | null = null;
   let startDelay: ReturnType<typeof setTimeout> | null = null;
 
   const startRepeat = (delta: number) => {
-    const v = props.value + delta;
+    const v = round(props.value + delta);
     if (v >= min && v <= max) props.onChange(v);
     startDelay = setTimeout(() => {
       repeatTimer = setInterval(() => {
-        const next = props.value + delta;
+        const next = round(props.value + delta);
         if (next >= min && next <= max) {
           props.onChange(next);
         } else {
@@ -80,7 +89,7 @@ const NumberInput: Component<NumberInputProps> = (props) => {
             // Try to parse and fire onChange if valid
             const v = parseFloat(raw);
             if (!isNaN(v)) {
-              const clamped = Math.min(Math.max(v, min), max);
+              const clamped = round(Math.min(Math.max(v, min), max));
               if (clamped !== props.value) props.onChange(clamped);
             }
           }}
