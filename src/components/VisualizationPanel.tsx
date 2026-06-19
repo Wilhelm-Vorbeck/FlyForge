@@ -1,6 +1,7 @@
-import { Component, Show, createSignal } from "solid-js";
+import { Component, Show, createSignal, createResource } from "solid-js";
 import { useAppContext } from "../store";
 import { FlywheelSimulation } from "../types";
+import { runSensitivitySweep } from "../services/api";
 
 // ============================================================
 // Nice tick generator
@@ -385,14 +386,146 @@ const EnergyChart: Component<{ s: FlywheelSimulation }> = (props) => {
 };
 
 // ============================================================
+// Sensitivity Chart
+// ============================================================
+const SWEEP_PARAMS = [
+  { id: "r_o", label: "外径 Ro", unit: "mm", get: (p: any) => p.r_o, range: (v: number) => [Math.max(10, v * 0.5), v * 1.5] as [number, number] },
+  { id: "r_i", label: "内径 Ri", unit: "mm", get: (p: any) => p.r_i, range: (v: number) => [0, v * 1.5] as [number, number] },
+  { id: "thickness", label: "厚度", unit: "mm", get: (p: any) => p.thickness, range: (v: number) => [Math.max(1, v * 0.5), v * 1.5] as [number, number] },
+  { id: "r_hub", label: "轮毂径", unit: "mm", get: (p: any) => p.r_hub, range: (v: number) => [0, v * 1.5] as [number, number] },
+  { id: "hub_thickness", label: "轮毂厚", unit: "mm", get: (p: any) => p.hub_thickness, range: (v: number) => [Math.max(1, v * 0.5), v * 1.5] as [number, number] },
+  { id: "rpm_rated", label: "额定转速", unit: "rpm", get: (p: any) => p.rpm_rated, range: (v: number) => [Math.max(100, v * 0.3), v * 1.7] as [number, number] },
+  { id: "rpm_max", label: "最大转速", unit: "rpm", get: (p: any) => p.rpm_max, range: (v: number) => [Math.max(500, v * 0.5), v * 1.5] as [number, number] },
+];
+
+const SWEEP_METRICS = [
+  { id: "max_stress", label: "最大应力", unit: "MPa" },
+  { id: "mass", label: "质量", unit: "kg" },
+  { id: "inertia", label: "转动惯量", unit: "kg·m²" },
+  { id: "energy_rated", label: "额定储能", unit: "kJ" },
+  { id: "energy_usable", label: "可用能量", unit: "kJ" },
+  { id: "specific_energy", label: "比能量", unit: "Wh/kg" },
+  { id: "safety_yield", label: "屈服安全系数", unit: "" },
+  { id: "safety_fatigue", label: "疲劳安全系数", unit: "" },
+];
+
+const SensitivityChart: Component<{ s: FlywheelSimulation }> = (props) => {
+  const [swParam, setSwParam] = createSignal("r_o");
+  const [swMetric, setSwMetric] = createSignal("max_stress");
+
+  const paramDef = () => SWEEP_PARAMS.find(p => p.id === swParam())!;
+  const metricDef = () => SWEEP_METRICS.find(m => m.id === swMetric())!;
+  const baseVal = () => paramDef().get(props.s.params);
+  const range = () => paramDef().range(baseVal());
+
+  const numPoints = 20;
+
+  const [swData] = createResource(
+    () => ({ param: swParam(), metric: swMetric() }),
+    async ({ param, metric }) => {
+      return await runSensitivitySweep(
+        props.s.params, props.s.material,
+        param, metric, range()[0], range()[1], numPoints,
+      );
+    },
+  );
+
+  const data = () => {
+    const sd = swData();
+    if (!sd) return null;
+    const valid = sd.points.filter(p => isFinite(p.param_value) && isFinite(p.metric_value));
+    if (valid.length < 2) return null;
+    const xMin = Math.min(...valid.map(p => p.param_value));
+    const xMax = Math.max(...valid.map(p => p.param_value));
+    const yMin = Math.min(...valid.map(p => p.metric_value));
+    const yMax = Math.max(...valid.map(p => p.metric_value));
+    const yPad = (yMax - yMin) * 0.1 || 1;
+    const xRange = W - 2 * PAD, yRange = H - 2 * PAD;
+    const sx = (x: number) => PAD + ((x - xMin) / (xMax - xMin || 1)) * xRange;
+    const sy = (y: number) => H - PAD - ((y - yMin + yPad) / (yMax - yMin + 2 * yPad)) * yRange;
+    const xVal = (svx: number) => xMin + ((svx - PAD) / xRange) * (xMax - xMin);
+    const yVal = (svy: number) => (yMin - yPad) + (1 - (svy - PAD) / yRange) * (yMax - yMin + 2 * yPad);
+
+    return {
+      xMin, xMax, yMin: yMin - yPad, yMax: yMax + yPad,
+      xLabel: sd.param_name, yLabel: sd.metric_name,
+      xTicks: niceTicks(xMin, xMax, 6), yTicks: niceTicks(yMin - yPad, yMax + yPad, 6),
+      specialX: [baseVal()], specialY: [],
+      xFormat: (v: number) => v.toFixed(0) + sd.param_unit,
+      yFormat: (v: number) => v.toFixed(1) + sd.metric_unit,
+      xVal, yVal, sx, sy,
+    };
+  };
+
+  const renderLines = (sx: (x: number) => number, sy: (y: number) => number) => {
+    const sd = swData();
+    if (!sd) return null;
+    const valid = sd.points.filter(p => isFinite(p.param_value) && isFinite(p.metric_value));
+    if (valid.length < 2) return null;
+    const d = valid.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.param_value)},${sy(p.metric_value)}`);
+    return <path d={d.join(" ")} fill="none" stroke="#3B82F6" stroke-width="2" />;
+  };
+
+  const renderValues = (ox: number, oy: number, x: number, _l: string[], _c: string[]) => {
+    const sd = swData();
+    if (!sd) return null;
+    const valid = sd.points.filter(p => isFinite(p.param_value) && isFinite(p.metric_value));
+    const interp = () => {
+      if (x <= valid[0].param_value) return valid[0].metric_value;
+      for (let i = 1; i < valid.length; i++)
+        if (x <= valid[i].param_value) {
+          const f = (x - valid[i-1].param_value) / (valid[i].param_value - valid[i-1].param_value);
+          return valid[i-1].metric_value + f * (valid[i].metric_value - valid[i-1].metric_value);
+        }
+      return valid[valid.length-1].metric_value;
+    };
+    const mv = interp();
+    const un = metricDef().unit ? " " + metricDef().unit : "";
+    return <text x={ox} y={oy + 14} fill="#3B82F6" font-size="9">≈ {mv.toFixed(2)}{un}</text>;
+  };
+
+  return (
+    <div class="w-full h-full flex flex-col min-h-0 select-none">
+      {/* Controls */}
+      <div class="flex-shrink-0 flex items-center space-x-2 mb-1">
+        <span class="text-[9px] text-gray-500">扫描</span>
+        <select value={swParam()} onChange={(e) => setSwParam(e.currentTarget.value)}
+          class="bg-[#111a22] border border-[#1a2e22] rounded px-1.5 py-0.5 text-[10px] text-white" style={{"-webkit-appearance":"none"}}>
+          {SWEEP_PARAMS.map(p => <option value={p.id}>{p.label}</option>)}
+        </select>
+        <span class="text-[9px] text-gray-500">→</span>
+        <select value={swMetric()} onChange={(e) => setSwMetric(e.currentTarget.value)}
+          class="bg-[#111a22] border border-[#1a2e22] rounded px-1.5 py-0.5 text-[10px] text-white" style={{"-webkit-appearance":"none"}}>
+          {SWEEP_METRICS.map(m => <option value={m.id}>{m.label}</option>)}
+        </select>
+        <span class="text-[9px] text-gray-500">{range()[0].toFixed(0)}~{range()[1].toFixed(0)}{paramDef().unit}</span>
+      </div>
+
+      {/* Chart */}
+      <Show when={swData() && swData()!.points.filter(p => isFinite(p.metric_value)).length >= 2}
+        fallback={
+          swData.loading
+            ? <div class="flex-1 flex items-center justify-center text-gray-500 text-[10px]">扫描中...</div>
+            : <div class="flex-1 flex items-center justify-center text-gray-500 text-[10px]">自动扫描中...</div>
+        }>
+        <div class="flex-1 min-h-0">
+          <InteractiveChart data={data} renderLines={renderLines} renderValues={renderValues}
+            curveCount={1} curveLabels={[metricDef().label]} curveColors={["#3B82F6"]} />
+        </div>
+      </Show>
+    </div>
+  );
+};
+
+// ============================================================
 // Main Panel
 // ============================================================
 const VisualizationPanel: Component = () => {
   const ctx = useAppContext();
   const sim = () => ctx.state().simulation;
-  const [activeChart, setActiveChart] = createSignal<"stress" | "rpm" | "energy">("stress");
+  const [activeChart, setActiveChart] = createSignal<"stress" | "rpm" | "energy" | "sensitivity">("stress");
 
-  const chartBtn = (id: "stress" | "rpm" | "energy", label: string) => (
+  const chartBtn = (id: "stress" | "rpm" | "energy" | "sensitivity", label: string) => (
     <button onClick={() => setActiveChart(id)}
       class={`px-2.5 py-1 text-xs rounded transition-colors ${
         activeChart() === id ? "bg-emerald-600 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"
@@ -407,6 +540,7 @@ const VisualizationPanel: Component = () => {
           {chartBtn("stress", "应力")}
           {chartBtn("rpm", "转速")}
           {chartBtn("energy", "能量")}
+          {chartBtn("sensitivity", "灵敏度")}
         </div>
       </div>
       <Show when={sim()} fallback={
@@ -425,6 +559,7 @@ const VisualizationPanel: Component = () => {
             {activeChart() === "stress" && <StressChart s={sim()!} />}
             {activeChart() === "rpm" && <RpmChart s={sim()!} />}
             {activeChart() === "energy" && <EnergyChart s={sim()!} />}
+            {activeChart() === "sensitivity" && <SensitivityChart s={sim()!} />}
           </div>
         </div>
       </Show>
