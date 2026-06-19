@@ -95,6 +95,12 @@ pub struct Material {
     /// Specific Strength (MPa·m³/kg) = yield_strength / density * 1000
     /// Core metric for flywheel evaluation
     pub specific_strength: f64,
+    /// Coefficient of thermal expansion (10⁻⁶ / K), default 12 for steel
+    #[serde(default = "default_cte")]
+    pub thermal_expansion: f64,
+    /// Reference temperature for material properties (°C)
+    #[serde(default = "default_ref_temp")]
+    pub reference_temperature: f64,
 }
 
 impl Material {
@@ -130,6 +136,8 @@ pub mod materials {
             tensile_strength: 1030.0,
             fatigue_limit: 480.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -148,6 +156,8 @@ pub mod materials {
             tensile_strength: 572.0,
             fatigue_limit: 159.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -166,6 +176,8 @@ pub mod materials {
             tensile_strength: 950.0,
             fatigue_limit: 510.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -184,6 +196,8 @@ pub mod materials {
             tensile_strength: ts,
             fatigue_limit: 1500.0,
             specific_strength: Material::compute_specific_strength(ts, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -202,6 +216,8 @@ pub mod materials {
             tensile_strength: 375.0,
             fatigue_limit: 180.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -220,6 +236,8 @@ pub mod materials {
             tensile_strength: 600.0,
             fatigue_limit: 280.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -238,6 +256,8 @@ pub mod materials {
             tensile_strength: 980.0,
             fatigue_limit: 450.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -255,6 +275,8 @@ pub mod materials {
             tensile_strength: 2050.0,
             fatigue_limit: 700.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -273,6 +295,8 @@ pub mod materials {
             tensile_strength: 310.0,
             fatigue_limit: 96.5,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -291,6 +315,8 @@ pub mod materials {
             tensile_strength: 600.0,
             fatigue_limit: 230.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -309,6 +335,8 @@ pub mod materials {
             tensile_strength: 250.0,
             fatigue_limit: 110.0,
             specific_strength: Material::compute_specific_strength(ys, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -327,6 +355,8 @@ pub mod materials {
             tensile_strength: ts,
             fatigue_limit: 1900.0,
             specific_strength: Material::compute_specific_strength(ts, density),
+            thermal_expansion: 12.0,
+            reference_temperature: 20.0,
         }
     }
 
@@ -443,6 +473,11 @@ pub struct FlywheelParams {
     #[serde(default = "default_material_id")]
     pub material_id: String,
 
+    // --- Temperature ---
+    /// Operating temperature (°C), affects yield strength and adds thermal stress
+    #[serde(default = "default_operating_temp")]
+    pub operating_temperature: f64,
+
     // --- Safety Factors ---
     /// Safety factor against yield
     #[serde(default = "default_safety_factor")]
@@ -467,6 +502,15 @@ fn default_safety_factor() -> f64 {
 fn default_burst_safety() -> f64 {
     2.0
 }
+fn default_cte() -> f64 {
+    12.0
+}
+fn default_ref_temp() -> f64 {
+    20.0
+}
+fn default_operating_temp() -> f64 {
+    20.0
+}
 
 impl Default for FlywheelParams {
     fn default() -> Self {
@@ -482,6 +526,7 @@ impl Default for FlywheelParams {
             n_points: 100,
             flywheel_type: FlywheelType::AnnularRing,
             material_id: default_material_id(),
+            operating_temperature: default_operating_temp(),
             layer_configs: vec![],
             safety_factor_yield: default_safety_factor(),
             safety_factor_fatigue: default_safety_factor(),

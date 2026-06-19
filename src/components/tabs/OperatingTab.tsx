@@ -24,6 +24,13 @@ const OperatingTab: Component = () => {
         <NumberInput label="破裂" value={p().safety_factor_burst} onChange={(v) => ctx.setParams({ safety_factor_burst: v })} unit="-" min={1.0} max={10.0} step={0.1} />
       </div>
 
+      {/* Temperature */}
+      <h3 class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider pt-1">温度</h3>
+      <div class="space-y-1.5">
+        <NumberInput label="工作温度" value={p().operating_temperature ?? 20}
+          onChange={(v) => ctx.setParams({ operating_temperature: v })} unit="°C" min={-50} max={500} step={5} />
+      </div>
+
       {/* Discretization */}
       <h3 class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider pt-1">计算</h3>
       <div class="space-y-1.5">

@@ -34,6 +34,8 @@ export interface Material {
   tensile_strength: number; // MPa
   fatigue_limit: number; // MPa
   specific_strength: number; // MPa·m³/kg
+  thermal_expansion: number; // 10⁻⁶ / K (CTE)
+  reference_temperature: number; // °C
 }
 
 /**
@@ -60,6 +62,7 @@ export interface FlywheelParams {
   n_points: number; // Number of radial discretization points
   flywheel_type: FlywheelType;
   material_id: string;
+  operating_temperature?: number; // °C, default 20
   safety_factor_yield: number;
   safety_factor_fatigue: number;
   safety_factor_burst: number;

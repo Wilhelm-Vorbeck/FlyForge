@@ -38,6 +38,7 @@ const DEFAULT_PARAMS: FlywheelParams = {
   safety_factor_yield: 1.5,
   safety_factor_fatigue: 1.5,
   safety_factor_burst: 2.0,
+  operating_temperature: 20,
   layer_configs: undefined,
 };
 

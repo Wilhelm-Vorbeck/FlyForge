@@ -1,7 +1,7 @@
 import { Component, Show, createSignal, createResource } from "solid-js";
 import { useAppContext } from "../store";
 import { FlywheelSimulation } from "../types";
-import { runSensitivitySweep } from "../services/api";
+import { runSensitivitySweep, computeThermalStress } from "../services/api";
 
 // ============================================================
 // Nice tick generator
@@ -518,14 +518,97 @@ const SensitivityChart: Component<{ s: FlywheelSimulation }> = (props) => {
 };
 
 // ============================================================
+// Thermal Stress Chart
+// ============================================================
+const ThermalChart: Component<{ s: FlywheelSimulation }> = (props) => {
+  const [thermData] = createResource(
+    () => props.s,
+    async (s) => {
+      return await computeThermalStress(s.params, s.material);
+    },
+  );
+
+  const data = () => {
+    const td = thermData();
+    if (!td || !td.r || td.r.length === 0) return null;
+    const xMin = 0, xMax = Math.max(...td.r);
+    const allVals = [...td.sigma_vm, ...td.sigma_vm_cent, ...td.sigma_vm_therm].filter(v => isFinite(v));
+    const yMax = Math.max(...allVals, td.corrected_yield) * 1.15, yMin = 0;
+    const xRange = W - 2 * PAD, yRange = H - 2 * PAD;
+    const sx = (x: number) => PAD + (x / xMax) * xRange;
+    const sy = (y: number) => H - PAD - (y / yMax) * yRange;
+    const xVal = (svx: number) => ((svx - PAD) / xRange) * xMax;
+    const yVal = (svy: number) => (1 - (svy - PAD) / yRange) * yMax;
+
+    let maxIdx = 0, maxV = 0;
+    td.sigma_vm.forEach((v, i) => { if (v > maxV) { maxV = v; maxIdx = i; } });
+    const specialX = [td.r[maxIdx]];
+    const specialY = [maxV].filter(v => v > 0 && v < yMax);
+
+    return { xMin, xMax, yMin, yMax, xLabel: "半径", yLabel: "应力",
+      xTicks: niceTicks(xMin, xMax, 6), yTicks: niceTicks(yMin, yMax, 6),
+      specialX, specialY,
+      xFormat: (v: number) => v.toFixed(0) + "mm",
+      yFormat: (v: number) => v.toFixed(0) + "MPa",
+      xVal, yVal, sx, sy };
+  };
+
+  const cc = ["#EF4444", "#3B82F6", "#F59E0B"];
+  const cl = ["合成应力(离心+热)", "纯离心应力", "纯热应力", "修正屈服"];
+
+  const renderLines = (sx: (x: number) => number, sy: (y: number) => number) => {
+    const td = thermData();
+    if (!td) return null;
+    const yieldLine = td.corrected_yield;
+    const chartYMax = data()?.yMax ?? 100;
+    const yieldInChart = yieldLine <= chartYMax;
+    const yy = yieldInChart ? sy(yieldLine) : PAD;
+    return <>
+      {[td.sigma_vm, td.sigma_vm_cent, td.sigma_vm_therm].map((arr, i) => (
+        <path d={arr.map((_: number, j: number) => `${j===0?"M":"L"}${sx(td.r[j])},${sy(arr[j])}`).join(" ")}
+          fill="none" stroke={cc[i]} stroke-width={i === 0 ? "2" : "1"} stroke-dasharray={i === 2 ? "5 3" : ""} />
+      ))}
+      <line x1={PAD} y1={yy} x2={W - PAD} y2={yy}
+        stroke="#10B981" stroke-width="1" stroke-dasharray="6 3" opacity="0.8" />
+      <text x={W - PAD - 2} y={yy - 4} text-anchor="end" fill="#10B981" font-size="8" opacity="0.9">
+        σ_y = {yieldLine.toFixed(0)} MPa{yieldInChart ? "" : " ↑"}
+      </text>
+    </>;
+  };
+
+  const renderValues = (ox: number, oy: number, x: number, labels: string[], colors: string[]) => {
+    const td = thermData();
+    if (!td) return null;
+    const interp = (arr: number[]) => {
+      if (x <= td.r[0]) return arr[0];
+      for (let i = 1; i < td.r.length; i++)
+        if (x <= td.r[i]) { const f = (x - td.r[i-1]) / (td.r[i] - td.r[i-1]); return arr[i-1] + f * (arr[i] - arr[i-1]); }
+      return arr[arr.length-1];
+    };
+    return [td.sigma_vm, td.sigma_vm_cent, td.sigma_vm_therm].map((arr, i) => {
+      const v = interp(arr);
+      return <text x={ox} y={oy + (i + 1) * 14} fill={cc[i]} font-size="9">{labels[i]}: {v.toFixed(1)} MPa</text>;
+    });
+  };
+
+  return (
+    <Show when={thermData()}
+      fallback={<div class="flex-1 flex items-center justify-center text-gray-500 text-[10px]">计算中...</div>}>
+      <InteractiveChart data={data} renderLines={renderLines} renderValues={renderValues}
+        curveCount={3} curveLabels={cl} curveColors={cc} />
+    </Show>
+  );
+};
+
+// ============================================================
 // Main Panel
 // ============================================================
 const VisualizationPanel: Component = () => {
   const ctx = useAppContext();
   const sim = () => ctx.state().simulation;
-  const [activeChart, setActiveChart] = createSignal<"stress" | "rpm" | "energy" | "sensitivity">("stress");
+  const [activeChart, setActiveChart] = createSignal<"stress" | "rpm" | "energy" | "sensitivity" | "thermal">("stress");
 
-  const chartBtn = (id: "stress" | "rpm" | "energy" | "sensitivity", label: string) => (
+  const chartBtn = (id: "stress" | "rpm" | "energy" | "sensitivity" | "thermal", label: string) => (
     <button onClick={() => setActiveChart(id)}
       class={`px-2.5 py-1 text-xs rounded transition-colors ${
         activeChart() === id ? "bg-emerald-600 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"
@@ -541,6 +624,7 @@ const VisualizationPanel: Component = () => {
           {chartBtn("rpm", "转速")}
           {chartBtn("energy", "能量")}
           {chartBtn("sensitivity", "灵敏度")}
+          {chartBtn("thermal", "热应力")}
         </div>
       </div>
       <Show when={sim()} fallback={
@@ -560,6 +644,7 @@ const VisualizationPanel: Component = () => {
             {activeChart() === "rpm" && <RpmChart s={sim()!} />}
             {activeChart() === "energy" && <EnergyChart s={sim()!} />}
             {activeChart() === "sensitivity" && <SensitivityChart s={sim()!} />}
+            {activeChart() === "thermal" && <ThermalChart s={sim()!} />}
           </div>
         </div>
       </Show>

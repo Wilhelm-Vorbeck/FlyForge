@@ -1,6 +1,7 @@
 use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_params_json, import_params_json};
 use flyforge_core::fatigue::estimate_fatigue_life;
 use flyforge_core::sensitivity::{run_sweep, SweepParam, SweepMetric, SensitivityPoint};
+use flyforge_core::thermal::{thermal_stress_annular, temperature_corrected_yield, combine_stress};
 use flyforge_core::solver::SolverRegistry;
 use flyforge_core::types::{FlywheelParams, FlywheelSimulation, Material, materials};
 use serde::{Deserialize, Serialize};
@@ -164,6 +165,68 @@ fn run_sensitivity_sweep(
     })
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ThermalStressDto {
+    pub r: Vec<f64>,         // radial coordinates (mm)
+    pub sigma_vm: Vec<f64>,  // combined von Mises stress (MPa)
+    pub sigma_vm_cent: Vec<f64>, // centrifugal only (MPa)
+    pub sigma_vm_therm: Vec<f64>, // thermal only (MPa)
+    pub corrected_yield: f64, // temperature-corrected yield strength (MPa)
+    pub max_stress: f64,
+    pub max_stress_location: f64,
+}
+
+#[tauri::command]
+fn compute_thermal_stress(
+    params: FlywheelParams,
+    material: Material,
+) -> Result<ThermalStressDto, String> {
+    let temp = params.operating_temperature;
+    let corrected_yield = temperature_corrected_yield(&material, temp);
+
+    // Generate radial points same as stress module
+    let n = params.n_points;
+    let r_m: Vec<f64> = (0..n)
+        .map(|i| (params.r_i + (params.r_o - params.r_i) * i as f64 / (n as f64 - 1.0)) / 1000.0)
+        .collect();
+
+    let registry = SolverRegistry::new();
+
+    // Get centrifugal stress first
+    let sim = registry.simulate(&params, &material)?;
+
+    // Compute thermal stress
+    // Assume typical flywheel gradient: inner hotter (bore), outer cooler
+    let temp_inner = temp + 10.0; // slight heating at bore
+    let temp_outer = temp - 5.0;  // slight cooling at rim
+    let (sigma_r_th, sigma_h_th) = thermal_stress_annular(&r_m, &params, &material, temp_inner, temp_outer);
+
+    // Combine stresses
+    let combined = combine_stress(&sim.stress_rated, &sigma_r_th, &sigma_h_th);
+
+    // Thermal-only von Mises
+    let n_pts = combined.r.len();
+    let mut sigma_vm_therm_only = vec![0.0; n_pts];
+    for i in 0..n_pts {
+        let sr = sigma_r_th[i] / 1e6;
+        let sh = sigma_h_th[i] / 1e6;
+        sigma_vm_therm_only[i] = (sr * sr + sh * sh - sr * sh).sqrt();
+    }
+
+    let max_idx = combined.sigma_vm.iter().enumerate()
+        .fold((0usize, f64::NEG_INFINITY), |(mi, mv), (i, &v)| if v > mv { (i, v) } else { (mi, mv) });
+
+    Ok(ThermalStressDto {
+        r: combined.r.clone(),
+        sigma_vm: combined.sigma_vm,
+        sigma_vm_cent: sim.stress_rated.sigma_vm.clone(),
+        sigma_vm_therm: sigma_vm_therm_only,
+        corrected_yield,
+        max_stress: combined.sigma_vm[max_idx],
+        max_stress_location: combined.r[max_idx],
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -180,6 +243,7 @@ pub fn run() {
             save_file_content,
             get_fatigue_estimate,
             run_sensitivity_sweep,
+            compute_thermal_stress,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

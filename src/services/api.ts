@@ -133,3 +133,21 @@ export async function runSensitivitySweep(
     numPoints,
   });
 }
+
+/**
+ * Compute thermal stress distribution
+ */
+export async function computeThermalStress(
+  params: FlywheelParams,
+  material: Material,
+): Promise<{
+  r: number[];
+  sigma_vm: number[];
+  sigma_vm_cent: number[];
+  sigma_vm_therm: number[];
+  corrected_yield: number;
+  max_stress: number;
+  max_stress_location: number;
+}> {
+  return await invoke("compute_thermal_stress", { params, material });
+}
