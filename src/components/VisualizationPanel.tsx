@@ -618,6 +618,7 @@ const SNChart: Component<{ s: FlywheelSimulation }> = (props) => {
     // Use linear cycles for domain (so isInPlot/crosshair work), log-scale for display
     const xMin = sd.curve[0].cycles;
     const xMax = sd.curve[sd.curve.length - 1].cycles;
+    if (!isFinite(xMin) || !isFinite(xMax) || xMax <= xMin) return null;
     const logMin = Math.log10(xMin);
     const logMax = Math.log10(xMax);
     const yMax = Math.max(sd.fatigue_limit, sd.operating_stress !== Infinity ? sd.operating_stress : 0, ...sd.curve.map(p => p.stress_amplitude)) * 1.2;
@@ -640,8 +641,11 @@ const SNChart: Component<{ s: FlywheelSimulation }> = (props) => {
       xTicks: [3,4,5,6,7,8,9].filter(t => t >= logMin && t <= logMax),
       yTicks: niceTicks(yMin, yMax, 6),
       specialX, specialY,
-      xFormat: (v: number) => v >= 100 ? `10^{${Math.log10(v).toFixed(0)}}` : `10^{${v.toFixed(0)}}`,
-      yFormat: (v: number) => v.toFixed(0) + "MPa",
+      xFormat: (v: number) => {
+        if (v == null || !isFinite(v)) return "—";
+        return v >= 100 ? `10^{${Math.log10(v).toFixed(0)}}` : `10^{${v.toFixed(0)}}`;
+      },
+      yFormat: (v: number) => v != null && isFinite(v) ? v.toFixed(0) + "MPa" : "—",
       xVal,
       yVal,
       sx: toScreenX,
@@ -653,17 +657,24 @@ const SNChart: Component<{ s: FlywheelSimulation }> = (props) => {
 
   const renderLines = (sx: (x: number) => number, sy: (y: number) => number) => {
     const sd = snData();
-    if (!sd) return null;
+    if (!sd || !sd.curve.length) return null;
 
-    const curvePath = sd.curve.map((p, i) =>
+    // Filter out any invalid points
+    const valid = sd.curve.filter(p => isFinite(p.cycles) && isFinite(p.stress_amplitude));
+    if (valid.length < 2) return null;
+    const first = valid[0];
+    const last = valid[valid.length-1];
+    const cycleAt10 = valid[Math.min(10, valid.length-1)];
+
+    const curvePath = valid.map((p, i) =>
       `${i === 0 ? "M" : "L"}${sx(p.cycles)},${sy(p.stress_amplitude)}`).join(" ");
 
     return <>
       <path d={curvePath} fill="none" stroke="#3B82F6" stroke-width="2" />
       {/* Fatigue limit horizontal line */}
-      <line x1={sx(sd.curve[0].cycles)} y1={sy(sd.fatigue_limit)} x2={sx(sd.curve[sd.curve.length-1].cycles)} y2={sy(sd.fatigue_limit)}
+      <line x1={sx(first.cycles)} y1={sy(sd.fatigue_limit)} x2={sx(last.cycles)} y2={sy(sd.fatigue_limit)}
         stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.8" />
-      <text x={sx(sd.curve[10].cycles)} y={sy(sd.fatigue_limit) - 4} fill="#F59E0B" font-size="9" text-anchor="middle">
+      <text x={sx(cycleAt10.cycles)} y={sy(sd.fatigue_limit) - 4} fill="#F59E0B" font-size="9" text-anchor="middle">
         σ_f = {sd.fatigue_limit.toFixed(0)} MPa
       </text>
       {/* Operating point */}
@@ -675,15 +686,17 @@ const SNChart: Component<{ s: FlywheelSimulation }> = (props) => {
 
   const renderValues = (ox: number, oy: number, x: number, _l: string[], _c: string[]) => {
     const sd = snData();
-    if (!sd) return null;
+    if (!sd || x == null || !isFinite(x)) return null;
     const interp = () => {
-      if (x <= sd.curve[0].cycles) return sd.curve[0].stress_amplitude;
-      for (let i = 1; i < sd.curve.length; i++)
-        if (x <= sd.curve[i].cycles) {
-          const f = Math.log(x / sd.curve[i-1].cycles) / Math.log(sd.curve[i].cycles / sd.curve[i-1].cycles);
-          return sd.curve[i-1].stress_amplitude + f * (sd.curve[i].stress_amplitude - sd.curve[i-1].stress_amplitude);
+      const valid = sd.curve.filter(p => isFinite(p.cycles) && isFinite(p.stress_amplitude));
+      if (valid.length < 2) return 0;
+      if (x <= valid[0].cycles) return valid[0].stress_amplitude;
+      for (let i = 1; i < valid.length; i++)
+        if (x <= valid[i].cycles) {
+          const f = Math.log(x / valid[i-1].cycles) / Math.log(valid[i].cycles / valid[i-1].cycles);
+          return valid[i-1].stress_amplitude + f * (valid[i].stress_amplitude - valid[i-1].stress_amplitude);
         }
-      return sd.curve[sd.curve.length-1].stress_amplitude;
+      return valid[valid.length-1].stress_amplitude;
     };
     const v = interp();
     const exp = Math.floor(Math.log10(x));
