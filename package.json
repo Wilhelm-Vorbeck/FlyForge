@@ -1,6 +1,6 @@
 {
   "name": "flyforge",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Flywheel design and kinematics simulation tool",
   "type": "module",
   "scripts": {
