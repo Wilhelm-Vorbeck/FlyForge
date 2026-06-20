@@ -2,6 +2,7 @@ import { Component, createSignal, onCleanup, Show } from "solid-js";
 import AccordionPanel from "./AccordionPanel";
 import VisualizationPanel from "./VisualizationPanel";
 import ResultsPanel from "./ResultsPanel";
+import ComparePanel from "./ComparePanel";
 import Header from "./Header";
 import SectionPreview from "./SectionPreview";
 import CrossSection from "./CrossSection";
@@ -18,6 +19,7 @@ const Layout: Component = () => {
   const [circlePanX, setCirclePanX] = createSignal(0);
 
   const [csResizing, setCsResizing] = createSignal(false);
+  const [rightTab, setRightTab] = createSignal<"results" | "compare">("results");
   let csResizeLastY = 0;
 
   const toggleLeft = () => { const v = !leftOpen(); setLeftOpen(v); persistLayout.setLeftOpen(v); };
@@ -140,8 +142,21 @@ const Layout: Component = () => {
           </div>
         </div>
 
-        <aside class={`${rightOpen() ? "w-60" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-l border-[#1a2e22]`}>
-          <ResultsPanel />
+        <aside class={`${rightOpen() ? "w-60" : "w-0"} transition-all duration-200 flex-shrink-0 overflow-hidden bg-[#0d1419] border-l border-[#1a2e22] flex flex-col`}>
+          {/* Right sidebar tabs */}
+          <div class="flex-shrink-0 flex border-b border-[#1a2e22]">
+            <button onClick={() => setRightTab("results")}
+              class={`flex-1 py-1.5 text-[10px] text-center transition-colors ${
+                rightTab() === "results" ? "text-emerald-300 border-b-2 border-emerald-600" : "text-gray-500 hover:text-gray-400"
+              }`}>结果</button>
+            <button onClick={() => setRightTab("compare")}
+              class={`flex-1 py-1.5 text-[10px] text-center transition-colors ${
+                rightTab() === "compare" ? "text-emerald-300 border-b-2 border-emerald-600" : "text-gray-500 hover:text-gray-400"
+              }`}>方案对比</button>
+          </div>
+          <div class="flex-1 overflow-y-auto p-2">
+            {rightTab() === "results" ? <ResultsPanel /> : <ComparePanel />}
+          </div>
         </aside>
       </div>
     </div>
