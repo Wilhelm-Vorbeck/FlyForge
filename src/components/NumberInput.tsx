@@ -10,6 +10,8 @@ interface NumberInputProps {
   step?: number;
   error?: boolean;
   errorMessage?: string;
+  warning?: boolean;
+  warningMessage?: string;
 }
 
 const NumberInput: Component<NumberInputProps> = (props) => {
@@ -99,7 +101,9 @@ const NumberInput: Component<NumberInputProps> = (props) => {
             commit(e.currentTarget.value);
           }}
           class={`w-16 bg-[#111a22] border rounded px-2 py-1 text-xs text-white text-right focus:outline-none focus:ring-1 transition-colors ${
-            props.error ? "border-red-500 focus:ring-red-500" : "border-[#1a2e22] focus:ring-emerald-500"
+            props.error ? "border-red-500 focus:ring-red-500"
+            : props.warning ? "border-yellow-600 focus:ring-yellow-500"
+            : "border-[#1a2e22] focus:ring-emerald-500"
           }`}
         />
         <div class="flex flex-col ml-1">
@@ -124,6 +128,9 @@ const NumberInput: Component<NumberInputProps> = (props) => {
       </div>
       {props.error && props.errorMessage && (
         <p class="text-[8px] text-red-400 ml-14 mt-0.5 truncate" title={props.errorMessage}>{props.errorMessage}</p>
+      )}
+      {!props.error && props.warning && props.warningMessage && (
+        <p class="text-[8px] text-yellow-500 ml-14 mt-0.5 truncate" title={props.warningMessage}>{props.warningMessage}</p>
       )}
     </div>
   );

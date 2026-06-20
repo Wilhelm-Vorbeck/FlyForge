@@ -1,5 +1,6 @@
 import { Component } from "solid-js";
 import { useAppContext } from "../../store";
+import { getFieldIssue } from "../../utils/validation";
 import NumberInput from "../NumberInput";
 
 const OperatingTab: Component = () => {
@@ -11,17 +12,26 @@ const OperatingTab: Component = () => {
       {/* Speed */}
       <h3 class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">转速</h3>
       <div class="space-y-1.5">
-        <NumberInput label="额定" value={p().rpm_rated} onChange={(v) => ctx.setParams({ rpm_rated: v })} unit="rpm" min={100} max={50000} step={100} />
-        <NumberInput label="最大" value={p().rpm_max} onChange={(v) => ctx.setParams({ rpm_max: v })} unit="rpm" min={100} max={100000} step={100} />
-        <NumberInput label="最小" value={p().rpm_min} onChange={(v) => ctx.setParams({ rpm_min: v })} unit="rpm" min={0} max={50000} step={100} />
+        <NumberInput label="额定" value={p().rpm_rated} onChange={(v) => ctx.setParams({ rpm_rated: v })} unit="rpm" min={100} max={50000} step={100}
+          error={getFieldIssue(p(), "rpm_rated")?.level === "error"} errorMessage={getFieldIssue(p(), "rpm_rated")?.message}
+          warning={getFieldIssue(p(), "rpm_rated")?.level === "warning"} warningMessage={getFieldIssue(p(), "rpm_rated")?.message} />
+        <NumberInput label="最大" value={p().rpm_max} onChange={(v) => ctx.setParams({ rpm_max: v })} unit="rpm" min={100} max={100000} step={100}
+          error={getFieldIssue(p(), "rpm_max")?.level === "error"} errorMessage={getFieldIssue(p(), "rpm_max")?.message}
+          warning={getFieldIssue(p(), "rpm_max")?.level === "warning"} warningMessage={getFieldIssue(p(), "rpm_max")?.message} />
+        <NumberInput label="最小" value={p().rpm_min} onChange={(v) => ctx.setParams({ rpm_min: v })} unit="rpm" min={0} max={50000} step={100}
+          error={getFieldIssue(p(), "rpm_min")?.level === "error"} errorMessage={getFieldIssue(p(), "rpm_min")?.message}
+          warning={getFieldIssue(p(), "rpm_min")?.level === "warning"} warningMessage={getFieldIssue(p(), "rpm_min")?.message} />
       </div>
 
       {/* Safety factors */}
       <h3 class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider pt-1">安全系数</h3>
       <div class="space-y-1.5">
-        <NumberInput label="屈服" value={p().safety_factor_yield} onChange={(v) => ctx.setParams({ safety_factor_yield: v })} unit="-" min={1.0} max={5.0} step={0.1} />
-        <NumberInput label="疲劳" value={p().safety_factor_fatigue} onChange={(v) => ctx.setParams({ safety_factor_fatigue: v })} unit="-" min={1.0} max={5.0} step={0.1} />
-        <NumberInput label="破裂" value={p().safety_factor_burst} onChange={(v) => ctx.setParams({ safety_factor_burst: v })} unit="-" min={1.0} max={10.0} step={0.1} />
+        <NumberInput label="屈服" value={p().safety_factor_yield} onChange={(v) => ctx.setParams({ safety_factor_yield: v })} unit="-" min={1.0} max={5.0} step={0.1}
+          warning={getFieldIssue(p(), "safety_factor_yield")?.level === "warning"} warningMessage={getFieldIssue(p(), "safety_factor_yield")?.message} />
+        <NumberInput label="疲劳" value={p().safety_factor_fatigue} onChange={(v) => ctx.setParams({ safety_factor_fatigue: v })} unit="-" min={1.0} max={5.0} step={0.1}
+          warning={getFieldIssue(p(), "safety_factor_fatigue")?.level === "warning"} warningMessage={getFieldIssue(p(), "safety_factor_fatigue")?.message} />
+        <NumberInput label="破裂" value={p().safety_factor_burst} onChange={(v) => ctx.setParams({ safety_factor_burst: v })} unit="-" min={1.0} max={10.0} step={0.1}
+          warning={getFieldIssue(p(), "safety_factor_burst")?.level === "warning"} warningMessage={getFieldIssue(p(), "safety_factor_burst")?.message} />
       </div>
 
       {/* Temperature */}
@@ -34,7 +44,8 @@ const OperatingTab: Component = () => {
       {/* Discretization */}
       <h3 class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider pt-1">计算</h3>
       <div class="space-y-1.5">
-        <NumberInput label="离散点" value={p().n_points} onChange={(v) => ctx.setParams({ n_points: v })} unit="点" min={20} max={500} step={10} />
+        <NumberInput label="离散点" value={p().n_points} onChange={(v) => ctx.setParams({ n_points: v })} unit="点" min={20} max={500} step={10}
+          warning={getFieldIssue(p(), "n_points")?.level === "warning"} warningMessage={getFieldIssue(p(), "n_points")?.message} />
       </div>
 
       {/* Speed range bar */}

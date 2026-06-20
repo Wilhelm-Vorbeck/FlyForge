@@ -1,6 +1,7 @@
 import { Component, Show } from "solid-js";
 import { useAppContext } from "../../store";
 import { FlywheelType } from "../../types";
+import { getFieldIssue } from "../../utils/validation";
 import NumberInput from "../NumberInput";
 
 /** Get field labels based on flywheel type */
@@ -43,18 +44,28 @@ const GeometryTab: Component = () => {
       </Show>
 
       <div class="space-y-1.5">
-        <NumberInput label={labels().ro} value={p().r_o} onChange={(v) => ctx.setParams({ r_o: v })} unit="mm" min={10} max={1000} step={1} error={hasError()} />
+        <NumberInput label={labels().ro} value={p().r_o} onChange={(v) => ctx.setParams({ r_o: v })} unit="mm" min={10} max={1000} step={1}
+          error={getFieldIssue(p(), "r_o")?.level === "error"} errorMessage={getFieldIssue(p(), "r_o")?.message}
+          warning={getFieldIssue(p(), "r_o")?.level === "warning"} warningMessage={getFieldIssue(p(), "r_o")?.message} />
         <Show when={showRi(ft())}>
-          <NumberInput label={labels().ri!} value={p().r_i} onChange={(v) => ctx.setParams({ r_i: v })} unit="mm" min={0} max={500} step={1} error={hasError()} />
+          <NumberInput label={labels().ri!} value={p().r_i} onChange={(v) => ctx.setParams({ r_i: v })} unit="mm" min={0} max={500} step={1}
+            error={getFieldIssue(p(), "r_i")?.level === "error"} errorMessage={getFieldIssue(p(), "r_i")?.message}
+            warning={getFieldIssue(p(), "r_i")?.level === "warning"} warningMessage={getFieldIssue(p(), "r_i")?.message} />
         </Show>
         <Show when={labels().thickness !== null}>
-          <NumberInput label={labels().thickness!} value={p().thickness} onChange={(v) => ctx.setParams({ thickness: v })} unit="mm" min={1} max={200} step={1} error={hasError()} />
+          <NumberInput label={labels().thickness!} value={p().thickness} onChange={(v) => ctx.setParams({ thickness: v })} unit="mm" min={1} max={200} step={1}
+            error={getFieldIssue(p(), "thickness")?.level === "error"} errorMessage={getFieldIssue(p(), "thickness")?.message}
+            warning={getFieldIssue(p(), "thickness")?.level === "warning"} warningMessage={getFieldIssue(p(), "thickness")?.message} />
         </Show>
         <Show when={labels().hub !== null}>
-          <NumberInput label={labels().hub!} value={p().r_hub} onChange={(v) => ctx.setParams({ r_hub: v })} unit="mm" min={0} max={500} step={1} error={hasError()} />
+          <NumberInput label={labels().hub!} value={p().r_hub} onChange={(v) => ctx.setParams({ r_hub: v })} unit="mm" min={0} max={500} step={1}
+            error={getFieldIssue(p(), "r_hub")?.level === "error"} errorMessage={getFieldIssue(p(), "r_hub")?.message}
+            warning={getFieldIssue(p(), "r_hub")?.level === "warning"} warningMessage={getFieldIssue(p(), "r_hub")?.message} />
         </Show>
         <Show when={labels().hubThick !== null}>
-          <NumberInput label={labels().hubThick!} value={p().hub_thickness} onChange={(v) => ctx.setParams({ hub_thickness: v })} unit="mm" min={1} max={200} step={1} error={hasError()} />
+          <NumberInput label={labels().hubThick!} value={p().hub_thickness} onChange={(v) => ctx.setParams({ hub_thickness: v })} unit="mm" min={1} max={200} step={1}
+            error={getFieldIssue(p(), "hub_thickness")?.level === "error"} errorMessage={getFieldIssue(p(), "hub_thickness")?.message}
+            warning={getFieldIssue(p(), "hub_thickness")?.level === "warning"} warningMessage={getFieldIssue(p(), "hub_thickness")?.message} />
         </Show>
       </div>
 
