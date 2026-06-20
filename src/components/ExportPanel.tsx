@@ -5,6 +5,7 @@ import {
   exportSimulationCsv,
   exportSimulationJson,
   exportSimulationSvg,
+  exportHTMLReport,
   exportParams,
   importParams,
 } from "../services/api";
@@ -55,7 +56,7 @@ const ExportPanel: Component = () => {
   };
 
   // ── Export ──
-  const handleExport = async (fmt: "csv" | "json" | "svg" | "params") => {
+  const handleExport = async (fmt: "csv" | "json" | "svg" | "html" | "params") => {
     const s = sim();
     if (!s && fmt !== "params") { setStatus("请先运行仿真"); return; }
     setStatus("导出中...");
@@ -66,15 +67,16 @@ const ExportPanel: Component = () => {
       if (fmt === "csv")      { content = await exportSimulationCsv(s!);    filename = `flyforge_${Date.now()}.csv`;  mime = "text/csv"; }
       else if (fmt === "json") { content = await exportSimulationJson(s!);  filename = `flyforge_${Date.now()}.json`; mime = "application/json"; }
       else if (fmt === "svg")  { content = await exportSimulationSvg(s!);   filename = `flyforge_${Date.now()}.svg`;  mime = "image/svg+xml"; }
+      else if (fmt === "html") { content = await exportHTMLReport(s!);      filename = `flyforge_report_${Date.now()}.html`; mime = "text/html"; }
       else                     { content = await exportParams(ctx.state().params); filename = `params_${Date.now()}.json`; mime = "application/json"; }
 
       if (useDialog()) {
         try {
-          const ext = fmt === "svg" ? ".svg" : fmt === "csv" ? ".csv" : ".json";
+          const ext = fmt === "svg" ? ".svg" : fmt === "csv" ? ".csv" : fmt === "html" ? ".html" : ".json";
           const handle = await (window as any).showSaveFilePicker({
             suggestedName: filename,
             types: [{
-              description: fmt === "svg" ? "SVG文件" : fmt === "csv" ? "CSV文件" : "JSON文件",
+              description: fmt === "svg" ? "SVG文件" : fmt === "csv" ? "CSV文件" : fmt === "html" ? "HTML报告" : "JSON文件",
               accept: { [mime]: [ext] },
             }],
           });
@@ -151,6 +153,11 @@ const ExportPanel: Component = () => {
           参数
         </button>
       </div>
+      {/* HTML Report export button */}
+      <button onClick={() => handleExport("html")} disabled={!sim()}
+        class="w-full text-[11px] py-1.5 mt-1.5 rounded bg-gradient-to-r from-[#0a2a1a] to-[#0a1a2a] text-emerald-300 hover:from-[#0f3a2a] hover:to-[#0a2a3a] disabled:opacity-40 transition-colors border border-emerald-800/50 font-medium">
+        导出报告
+      </button>
       <Show when={status()}>
         <p class="text-[9px] text-center text-emerald-400 mt-1 truncate" title={status()!}>{status()}</p>
       </Show>

@@ -77,6 +77,13 @@ export async function exportSimulationSvg(sim: FlywheelSimulation): Promise<stri
 }
 
 /**
+ * Export simulation result as a self-contained HTML engineering report
+ */
+export async function exportHTMLReport(sim: FlywheelSimulation): Promise<string> {
+  return await invoke("export_html_report_cmd", { sim });
+}
+
+/**
  * Export parameters to JSON
  */
 export async function exportParams(params: FlywheelParams): Promise<string> {

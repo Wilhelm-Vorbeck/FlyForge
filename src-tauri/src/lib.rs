@@ -1,4 +1,4 @@
-use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_params_json, import_params_json};
+use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_html_report, export_params_json, import_params_json};
 use flyforge_core::fatigue::{estimate_fatigue_life, estimate_fatigue_life_with_criterion, sn_curve, FatigueCriterion};
 use flyforge_core::sensitivity::{run_sweep, SweepParam, SweepMetric};
 use flyforge_core::thermal::{thermal_stress_annular, temperature_corrected_yield, combine_stress};
@@ -69,6 +69,11 @@ fn export_simulation_json(sim: FlywheelSimulation) -> Result<String, String> {
 #[tauri::command]
 fn export_simulation_svg(sim: FlywheelSimulation) -> String {
     export_svg_stress(&sim)
+}
+
+#[tauri::command]
+fn export_html_report_cmd(sim: FlywheelSimulation) -> String {
+    export_html_report(&sim)
 }
 
 #[tauri::command]
@@ -271,6 +276,7 @@ pub fn run() {
             export_simulation_csv,
             export_simulation_json,
             export_simulation_svg,
+            export_html_report_cmd,
             export_params,
             import_params,
             save_file_content,
