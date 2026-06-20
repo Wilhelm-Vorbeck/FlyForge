@@ -28,6 +28,9 @@ const MaterialTab: Component = () => {
   const [newYield, setNewYield] = createSignal(400);
   const [newTensile, setNewTensile] = createSignal(600);
   const [newFatigue, setNewFatigue] = createSignal(300);
+  const [newYoung, setNewYoung] = createSignal(200);
+  const [newPoisson, setNewPoisson] = createSignal(0.3);
+  const [newCTE, setNewCTE] = createSignal(12);
 
   // Combined material list
   const allMaterials = () => [
@@ -48,13 +51,25 @@ const MaterialTab: Component = () => {
       id, name_zh: name,
       density: newDensity(), yield_strength: newYield(),
       tensile_strength: newTensile(), fatigue_limit: newFatigue(),
+      young_modulus: newYoung(), poisson_ratio: newPoisson(),
+      thermal_expansion: newCTE(),
     };
     persistCustomMaterials.add(m);
     setCustomMaterials(persistCustomMaterials.getAll());
-    ctx.setParams({ material_id: id });
+    ctx.setParams({ material_id: id, material_override: toMaterialObj(m) });
     setShowAdd(false);
     setNewName("");
   };
+
+  /** Convert CustomMaterial to full Material for backend */
+  const toMaterialObj = (m: CustomMaterial) => ({
+    name: m.id, name_zh: m.name_zh,
+    density: m.density, young_modulus: m.young_modulus,
+    poisson_ratio: m.poisson_ratio, yield_strength: m.yield_strength,
+    tensile_strength: m.tensile_strength, fatigue_limit: m.fatigue_limit,
+    specific_strength: m.yield_strength / m.density * 1000,
+    thermal_expansion: m.thermal_expansion, reference_temperature: 20,
+  });
 
   const handleRemove = (id: string) => {
     persistCustomMaterials.remove(id);
@@ -72,7 +87,14 @@ const MaterialTab: Component = () => {
       {/* Material selector */}
       <select
         value={ctx.state().params.material_id}
-        onChange={(e) => ctx.setParams({ material_id: e.target.value })}
+        onChange={(e) => {
+          const id = e.target.value;
+          const custom = customMaterials().find(m => m.id === id);
+          ctx.setParams({
+            material_id: id,
+            material_override: custom ? toMaterialObj(custom) : undefined,
+          });
+        }}
         class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
       >
         <optgroup label="内置材料">
@@ -119,6 +141,16 @@ const MaterialTab: Component = () => {
                 class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
             </div>
             <div>
+              <label class="text-[10px] text-gray-500 block mb-0.5">杨氏模量 (GPa)</label>
+              <input type="number" step="0.1" value={newYoung()} onInput={(e) => setNewYoung(parseFloat(e.currentTarget.value) || 0)}
+                class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-500 block mb-0.5">泊松比</label>
+              <input type="number" step="0.01" value={newPoisson()} onInput={(e) => setNewPoisson(parseFloat(e.currentTarget.value) || 0)}
+                class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+            <div>
               <label class="text-[10px] text-gray-500 block mb-0.5">屈服强度 (MPa)</label>
               <input type="number" value={newYield()} onInput={(e) => setNewYield(parseFloat(e.currentTarget.value) || 0)}
                 class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
@@ -131,6 +163,11 @@ const MaterialTab: Component = () => {
             <div>
               <label class="text-[10px] text-gray-500 block mb-0.5">疲劳极限 (MPa)</label>
               <input type="number" value={newFatigue()} onInput={(e) => setNewFatigue(parseFloat(e.currentTarget.value) || 0)}
+                class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-500 block mb-0.5">热膨胀系数 (10⁻⁶/K)</label>
+              <input type="number" step="0.1" value={newCTE()} onInput={(e) => setNewCTE(parseFloat(e.currentTarget.value) || 0)}
                 class="w-full bg-[#111a22] border border-[#1a2e22] rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
             </div>
           </div>

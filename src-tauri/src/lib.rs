@@ -50,8 +50,9 @@ fn get_flywheel_types() -> Vec<String> {
 #[tauri::command]
 fn run_simulation(params: FlywheelParams) -> Result<FlywheelSimulation, String> {
     let registry = SolverRegistry::new();
-    let material = materials::find_by_id(&params.material_id)
-        .unwrap_or_else(|| materials::default_material());
+    let material = params.material_override.clone()
+        .unwrap_or_else(|| materials::find_by_id(&params.material_id)
+            .unwrap_or_else(|| materials::default_material()));
     registry.simulate(&params, &material)
 }
 

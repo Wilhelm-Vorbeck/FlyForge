@@ -472,6 +472,9 @@ pub struct FlywheelParams {
     /// Material index (references built-in material library) or custom material name
     #[serde(default = "default_material_id")]
     pub material_id: String,
+    /// Custom material override (if set, overrides material_id lookup)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub material_override: Option<Material>,
 
     // --- Temperature ---
     /// Operating temperature (°C), affects yield strength and adds thermal stress
@@ -526,6 +529,7 @@ impl Default for FlywheelParams {
             n_points: 100,
             flywheel_type: FlywheelType::AnnularRing,
             material_id: default_material_id(),
+            material_override: None,
             operating_temperature: default_operating_temp(),
             layer_configs: vec![],
             safety_factor_yield: default_safety_factor(),

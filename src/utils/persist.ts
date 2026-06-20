@@ -58,6 +58,9 @@ export interface CustomMaterial {
   yield_strength: number;
   tensile_strength: number;
   fatigue_limit: number;
+  young_modulus: number; // GPa
+  poisson_ratio: number;
+  thermal_expansion: number; // 10⁻⁶/K
 }
 
 export const persistCustomMaterials = {

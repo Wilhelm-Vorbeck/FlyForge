@@ -67,6 +67,7 @@ export interface FlywheelParams {
   safety_factor_fatigue: number;
   safety_factor_burst: number;
   layer_configs?: LayerConfig[]; // Multi-layer composite only
+  material_override?: Material; // Custom material (if set, overrides material_id lookup)
 }
 
 /**
