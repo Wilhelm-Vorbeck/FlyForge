@@ -1,4 +1,4 @@
-import { Component, Show, For, createResource } from "solid-js";
+import { Component, Show, For, createResource, createSignal } from "solid-js";
 import { useAppContext } from "../store";
 import ExportPanel from "./ExportPanel";
 import { getFatigueEstimate } from "../services/api";
@@ -20,19 +20,29 @@ const MiniCard: Component<MiniCardProps> = (props) => (
   </div>
 );
 
+const CRITERIA = [
+  { value: "Goodman", label: "Goodman (保守)" },
+  { value: "Gerber", label: "Gerber (抛物线)" },
+  { value: "Soderberg", label: "Soderberg (最保守)" },
+];
+
 const ResultsPanel: Component = () => {
   const ctx = useAppContext();
   const sim = () => ctx.state().simulation;
+  const [criterion, setCriterion] = createSignal("Goodman");
 
-  // Fatigue estimation — re-fetches when simulation changes
-  const [fatigue] = createResource(sim, async (s) => {
-    if (!s) return null;
-    try {
-      return await getFatigueEstimate(s);
-    } catch {
-      return null;
+  // Fatigue estimation — re-fetches when simulation or criterion changes
+  const [fatigue] = createResource(
+    () => ({ sim: sim(), crit: criterion() }),
+    async ({ sim: s, crit }) => {
+      if (!s) return null;
+      try {
+        return await getFatigueEstimate(s, crit);
+      } catch {
+        return null;
+      }
     }
-  });
+  );
 
   return (
     <div class="space-y-3">
@@ -97,7 +107,13 @@ const ResultsPanel: Component = () => {
                   f().infinite_life ? "bg-[#0f2a1a]/60 border-[#1a4a2e]" : f().years > 5
                     ? "bg-[#1a2e22]/60 border-[#1a4a2e]" : "bg-red-900/20 border-red-800/50"
                 }`}>
-                  <p class="text-[9px] text-gray-500 mb-0.5">疲劳寿命估算</p>
+                  <div class="flex items-center justify-between mb-0.5">
+                    <p class="text-[9px] text-gray-500">疲劳寿命估算</p>
+                    <select value={criterion()} onChange={(e) => setCriterion(e.target.value)}
+                      class="bg-[#0d1419] border border-[#1a2e22] rounded px-1 py-0 text-[8px] text-gray-400 focus:outline-none">
+                      {CRITERIA.map(c => <option value={c.value}>{c.label}</option>)}
+                    </select>
+                  </div>
                   <p class={`text-[10px] font-medium leading-relaxed ${
                     f().infinite_life ? "text-green-400" : f().years > 5 ? "text-gray-300" : "text-red-400"
                   }`}>

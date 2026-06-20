@@ -93,7 +93,7 @@ export async function importParams(json: string): Promise<FlywheelParams> {
 /**
  * Get fatigue life estimation
  */
-export async function getFatigueEstimate(sim: FlywheelSimulation): Promise<{
+export async function getFatigueEstimate(sim: FlywheelSimulation, criterion?: string): Promise<{
   stress_amplitude: number;
   cycles: number;
   years: number;
@@ -101,7 +101,7 @@ export async function getFatigueEstimate(sim: FlywheelSimulation): Promise<{
   infinite_life: boolean;
   life_description: string;
 }> {
-  return await invoke("get_fatigue_estimate", { sim });
+  return await invoke("get_fatigue_estimate", { sim, criterion });
 }
 
 /**

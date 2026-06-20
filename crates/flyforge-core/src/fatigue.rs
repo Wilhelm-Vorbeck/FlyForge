@@ -6,6 +6,40 @@
 /// - Shigley's Mechanical Engineering Design
 use crate::types::Material;
 
+/// Mean stress correction criterion
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum FatigueCriterion {
+    /// Goodman: σ_a = σ_e × (1 - σ_m/σ_u) — conservative for ductile metals
+    Goodman,
+    /// Gerber: σ_a = σ_e × (1 - (σ_m/σ_u)²) — parabolic, less conservative
+    Gerber,
+    /// Soderberg: σ_a = σ_e × (1 - σ_m/σ_y) — most conservative, uses yield strength
+    Soderberg,
+}
+
+impl FatigueCriterion {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Goodman => "Goodman",
+            Self::Gerber => "Gerber",
+            Self::Soderberg => "Soderberg",
+        }
+    }
+    pub fn name_zh(&self) -> &'static str {
+        match self {
+            Self::Goodman => "Goodman (保守)",
+            Self::Gerber => "Gerber (抛物线)",
+            Self::Soderberg => "Soderberg (最保守)",
+        }
+    }
+}
+
+impl Default for FatigueCriterion {
+    fn default() -> Self {
+        Self::Goodman
+    }
+}
+
 /// Fatigue life result
 #[derive(Debug, Clone)]
 pub struct FatigueResult {
@@ -52,18 +86,46 @@ fn sn_params(material: &Material) -> SNParams {
     SNParams { b, c }
 }
 
-/// Compute fatigue life estimation
+/// Compute fatigue life estimation with specified mean stress correction criterion.
+///
+/// Uses Goodman, Gerber, or Soderberg mean stress correction when mean_stress > 0.
 pub fn estimate_fatigue_life(
     material: &Material,
-    max_stress_amplitude: f64, // MPa — the alternating stress at the critical point
-    mean_stress: f64,          // MPa — mean stress (optional, for Goodman correction)
+    max_stress_amplitude: f64,
+    mean_stress: f64,
+) -> FatigueResult {
+    estimate_fatigue_life_with_criterion(material, max_stress_amplitude, mean_stress, FatigueCriterion::default())
+}
+
+/// Compute fatigue life with explicit criterion selection.
+pub fn estimate_fatigue_life_with_criterion(
+    material: &Material,
+    max_stress_amplitude: f64,
+    mean_stress: f64,
+    criterion: FatigueCriterion,
 ) -> FatigueResult {
     let params = sn_params(material);
 
-    // Apply Goodman mean stress correction if mean_stress > 0
-    // σ_a_goodman = σ_a / (1 - σ_m / σ_uts)
+    // Apply mean stress correction
     let stress_amplitude = if mean_stress > 0.0 {
-        max_stress_amplitude / (1.0 - mean_stress / material.tensile_strength)
+        match criterion {
+            // Goodman: σ_a_corrected = σ_a / (1 - σ_m / σ_u)
+            FatigueCriterion::Goodman => {
+                let denom = 1.0 - mean_stress / material.tensile_strength;
+                if denom <= 0.0 { f64::INFINITY } else { max_stress_amplitude / denom }
+            }
+            // Gerber: σ_a_corrected = σ_a / (1 - (σ_m / σ_u)²)
+            FatigueCriterion::Gerber => {
+                let ratio = mean_stress / material.tensile_strength;
+                let denom = 1.0 - ratio * ratio;
+                if denom <= 0.0 { f64::INFINITY } else { max_stress_amplitude / denom }
+            }
+            // Soderberg: σ_a_corrected = σ_a / (1 - σ_m / σ_y)
+            FatigueCriterion::Soderberg => {
+                let denom = 1.0 - mean_stress / material.yield_strength;
+                if denom <= 0.0 { f64::INFINITY } else { max_stress_amplitude / denom }
+            }
+        }
     } else {
         max_stress_amplitude
     };

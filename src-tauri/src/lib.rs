@@ -1,5 +1,5 @@
 use flyforge_core::export::{export_csv, export_json, export_svg_stress, export_params_json, import_params_json};
-use flyforge_core::fatigue::{estimate_fatigue_life, sn_curve};
+use flyforge_core::fatigue::{estimate_fatigue_life, estimate_fatigue_life_with_criterion, sn_curve, FatigueCriterion};
 use flyforge_core::sensitivity::{run_sweep, SweepParam, SweepMetric};
 use flyforge_core::thermal::{thermal_stress_annular, temperature_corrected_yield, combine_stress};
 use flyforge_core::solver::SolverRegistry;
@@ -87,11 +87,12 @@ fn save_file_content(path: String, content: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn get_fatigue_estimate(sim: FlywheelSimulation) -> FatigueResultDto {
+fn get_fatigue_estimate(sim: FlywheelSimulation, criterion: Option<FatigueCriterion>) -> FatigueResultDto {
     let mat = &sim.material;
     let max_vm = sim.max_stress_rated;
     let mean_stress = max_vm * 0.3; // approximate mean stress as 30% of max
-    let result = estimate_fatigue_life(mat, max_vm, mean_stress);
+    let crit = criterion.unwrap_or_default();
+    let result = estimate_fatigue_life_with_criterion(mat, max_vm, mean_stress, crit);
     FatigueResultDto {
         stress_amplitude: result.stress_amplitude,
         cycles: result.cycles,
