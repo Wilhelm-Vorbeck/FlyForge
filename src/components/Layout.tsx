@@ -1,4 +1,4 @@
-import { Component, createSignal, onCleanup, Show } from "solid-js";
+import { Component, createSignal, onCleanup, onMount, Show } from "solid-js";
 import AccordionPanel from "./AccordionPanel";
 import VisualizationPanel from "./VisualizationPanel";
 import ResultsPanel from "./ResultsPanel";
@@ -7,8 +7,10 @@ import Header from "./Header";
 import SectionPreview from "./SectionPreview";
 import CrossSection from "./CrossSection";
 import { persistLayout } from "../utils/persist";
+import { useAppContext } from "../store";
 
 const Layout: Component = () => {
+  const ctx = useAppContext();
   const [topRatio, setTopRatio] = createSignal(persistLayout.getTopRatio());
   const [dragging, setDragging] = createSignal(false);
   const [leftOpen, setLeftOpen] = createSignal(persistLayout.getLeftOpen());
@@ -30,6 +32,23 @@ const Layout: Component = () => {
     setCircleZoom(z);
     setCirclePanX(px);
   };
+
+  // ── Keyboard shortcuts ──
+  const onKeyDown = (e: KeyboardEvent) => {
+    // Ignore when focus is in an input/select
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+    const ctrl = e.ctrlKey || e.metaKey;
+    if (ctrl && e.key === "z" && !e.shiftKey) { e.preventDefault(); ctx.undo(); }
+    if (ctrl && e.key === "z" && e.shiftKey) { e.preventDefault(); ctx.redo(); }
+    if (ctrl && e.key === "y") { e.preventDefault(); ctx.redo(); }
+    if (ctrl && e.key === "l") { e.preventDefault(); toggleLeft(); }
+    if (ctrl && e.key === "r") { e.preventDefault(); toggleRight(); }
+  };
+
+  onMount(() => { window.addEventListener("keydown", onKeyDown); });
+  onCleanup(() => { window.removeEventListener("keydown", onKeyDown); });
 
   // ── Top/bottom ratio drag ──
   let containerRef: HTMLDivElement | undefined;

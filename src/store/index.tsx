@@ -1,6 +1,7 @@
 import { createSignal, createContext, useContext, ParentComponent } from "solid-js";
 import { FlywheelParams, FlywheelType, FlywheelSimulation, Material } from "../types";
 import { persistSession } from "../utils/persist";
+import { ParamHistory } from "../utils/history";
 
 // State type
 interface AppState {
@@ -20,6 +21,10 @@ interface AppContextType {
   setError: (error: string | null) => void;
   setActivePreset: (name: string | null) => void;
   resetParams: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 }
 
 // Default parameters (with session memory for flywheel type and material)
@@ -52,6 +57,8 @@ export const AppProvider: ParentComponent = (props) => {
   const [isLoading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [activePresetName, setActivePresetName] = createSignal<string | null>(null);
+  const [historyVersion, setHistoryVersion] = createSignal(0); // trigger reactivity for canUndo/canRedo
+  const history = new ParamHistory();
 
   const state = (): AppState => ({
     params: params(),
@@ -63,6 +70,9 @@ export const AppProvider: ParentComponent = (props) => {
 
   const setParams = (newParams: Partial<FlywheelParams>) => {
     setParamsSignal((prev) => {
+      // Push current state to history before changing
+      history.push(prev);
+      setHistoryVersion(v => v + 1);
       const next = { ...prev, ...newParams };
       // Persist session memory for flywheel type and material
       if (newParams.flywheel_type !== undefined) persistSession.setFlywheelType(next.flywheel_type);
@@ -70,6 +80,25 @@ export const AppProvider: ParentComponent = (props) => {
       return next;
     });
   };
+
+  const undo = () => {
+    const prev = history.undo();
+    if (prev) {
+      setParamsSignal(prev);
+      setHistoryVersion(v => v + 1);
+    }
+  };
+
+  const redo = () => {
+    const next = history.redo();
+    if (next) {
+      setParamsSignal(next);
+      setHistoryVersion(v => v + 1);
+    }
+  };
+
+  const canUndo = () => { historyVersion(); return history.canUndo(); };
+  const canRedo = () => { historyVersion(); return history.canRedo(); };
 
   const setActivePreset = (name: string | null) => {
     setActivePresetName(name);
@@ -90,6 +119,10 @@ export const AppProvider: ParentComponent = (props) => {
     setError,
     setActivePreset,
     resetParams,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   };
 
   return (
