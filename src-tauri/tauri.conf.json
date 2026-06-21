@@ -4,7 +4,7 @@
   "version": "0.4.0",
   "identifier": "com.flyforge.app",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "../dist-v040",
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
